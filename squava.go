@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"io"
+	"flag"
 )
 
 type Board [5][5]int
@@ -18,23 +20,23 @@ func main() {
 	var move [2]int
 	var winner int
 	var end_of_game bool
+	var human_first bool = false
+
+	human_first_ptr := flag.Bool("H", true, "Human takes first move")
+	max_depth_ptr := flag.Int("d", 6, "maximum lookahead depth")
+	flag.Parse()
+
+	human_first = *human_first_ptr
+	max_depth = *max_depth_ptr
 
 	for {
-		var l, m int
 
-		for looping := true; looping; {
-			fmt.Printf("Move> ")
-			_, err := fmt.Scanf("%d %d\n", &l, &m)
-			if err != nil {
-				fmt.Printf("Failed to read: %v\n", err)
-				os.Exit(1)
-			}
-			if bd[l][m] == 0 {
-				looping = false
-			}
+		if human_first {
+			l, m := read_move(&bd)
+			bd[l][m] = -1
+		} else {
+			human_first = true
 		}
-
-		bd[l][m] = -1
 
 		winner, end_of_game = check_winner(&bd)
 
@@ -311,4 +313,23 @@ func static_value(bd *Board) (score int) {
 		}
 	}
 	return score
+}
+
+func read_move(bd *Board) (x, y int) {
+	for {
+		fmt.Printf("Your move: ")
+		_, err := fmt.Scanf("%d %d\n", &x, &y)
+		if err == io.EOF {
+			os.Exit(0)
+		}
+		if err != nil {
+			fmt.Printf("Failed to read: %v\n", err)
+			os.Exit(1)
+		}
+		if bd[x][y] == 0 {
+			break
+		}
+		fmt.Printf("Cell (%d, %d) already occupied, try again\n", x, y)
+	}
+	return x, y
 }
