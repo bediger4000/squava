@@ -23,10 +23,14 @@ func main() {
 	var human_first bool = false
 
 	human_first_ptr := flag.Bool("H", true, "Human takes first move")
+	computer_first_ptr := flag.Bool("C", false, "Computer takes first move")
 	max_depth_ptr := flag.Int("d", 6, "maximum lookahead depth")
 	flag.Parse()
 
 	human_first = *human_first_ptr
+	if *computer_first_ptr {
+		human_first = false
+	}
 	max_depth = *max_depth_ptr
 
 	for {
@@ -34,9 +38,9 @@ func main() {
 		if human_first {
 			l, m := read_move(&bd)
 			bd[l][m] = -1
-		} else {
-			human_first = true
 		}
+
+		human_first = true
 
 		winner, end_of_game = check_winner(&bd)
 
