@@ -1,12 +1,12 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"io"
 	"flag"
-	"time"
+	"fmt"
+	"io"
 	"math/rand"
+	"os"
+	"time"
 )
 
 type Board [5][5]int
@@ -17,10 +17,7 @@ const LOSS = -1000
 var max_depth int = 6
 
 func main() {
-	var bd Board
-	var winner int
-	var end_of_game bool
-	var human_first bool = false
+	var human_first bool
 
 	human_first_ptr := flag.Bool("H", true, "Human takes first move")
 	computer_first_ptr := flag.Bool("C", false, "Computer takes first move")
@@ -35,7 +32,11 @@ func main() {
 
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	for {
+	var bd Board
+	var winner int
+	var end_of_game bool = false
+
+	for !end_of_game {
 
 		if human_first {
 			l, m := read_move(&bd)
@@ -50,10 +51,10 @@ func main() {
 			break
 		}
 
-		max := LOSS
+		var moves [25][2]int
+		var next int = 0
 
-		var moves [][]int
-		var next int
+		max := LOSS
 
 		for i, row := range bd {
 			for j, mark := range row {
@@ -61,39 +62,27 @@ func main() {
 					bd[i][j] = 1
 					val := alphabeta(&bd, 1, -1, LOSS, WIN)
 					bd[i][j] = 0
-					if val > max {
-						move := make([]int, 2)
-						move[0] = i
-						move[1] = j
-						moves = make([][]int, 25)
-						next = 1
-						moves[0] = move
-						max = val
-					} else if val == max {
-						move := make([]int, 2)
-						move[0] = i
-						move[1] = j
-						moves[next] = move
+					if val >= max {
+						if val > max {
+							max = val
+							next = 0
+						}
+						moves[next][0] = i
+						moves[next][1] = j
 						next++
 					}
 				}
 			}
 		}
 
-
 		r := rand.Intn(next)
 		fmt.Printf("My move: %d %d (%d, %d, %d)\n", moves[r][0], moves[r][1], max, next, r)
 
 		bd[moves[r][0]][moves[r][1]] = 1
 
-
 		print_board(&bd)
 
 		winner, end_of_game = check_winner(&bd)
-
-		if end_of_game {
-			break
-		}
 	}
 
 	var phrase string
@@ -105,7 +94,6 @@ func main() {
 	case -1:
 		phrase = "O wins\n"
 	}
-
 	fmt.Printf(phrase)
 
 	os.Exit(0)
@@ -193,7 +181,6 @@ func print_board(bd *Board) {
 		fmt.Printf("\n")
 	}
 }
-
 
 var losing_triplets [][][]int = [][][]int{
 	[][]int{[]int{0, 0}, []int{1, 0}, []int{2, 0}},
