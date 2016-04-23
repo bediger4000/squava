@@ -35,11 +35,14 @@ func main() {
 	var winner int
 	var end_of_game bool = false
 
+	move_counter := 0
+
 	for !end_of_game {
 
 		if human_first {
 			l, m := read_move(&bd)
 			bd[l][m] = -1
+			move_counter++
 		}
 
 		human_first = true
@@ -55,6 +58,9 @@ func main() {
 
 		max := LOSS
 
+		if move_counter < 4 { max_depth = 4 }
+		if move_counter > 3 { max_depth = 6 }
+		if move_counter > 10 { max_depth = 8 }
 		for i, row := range bd {
 			for j, mark := range row {
 				if mark == 0 {
@@ -78,6 +84,7 @@ func main() {
 		fmt.Printf("My move: %d %d (%d, %d, %d)\n", moves[r][0], moves[r][1], max, next, r)
 
 		bd[moves[r][0]][moves[r][1]] = 1
+		move_counter++
 
 		print_board(&bd)
 
