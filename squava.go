@@ -17,11 +17,9 @@ func main() {
 	var max int = LOSS
 	var move [2]int
 
-	fmt.Printf("Main\n")
-
-	for i := 0; i < 5; i++ {
-		for j := 0; j < 5; j++ {
-			if bd[i][j] == 0 {
+	for i, row := range bd {
+		for j, marker := range row {
+			if marker == 0 {
 				bd[i][j] = 1
 				val := alphabeta(&bd, 1, -1, LOSS, WIN)
 				bd[i][j] = 0
@@ -34,8 +32,6 @@ func main() {
 			}
 		}
 	}
-
-	fmt.Printf("Move: (%d, %d), value %d\n", move[0], move[1], max)
 
 	bd[move[0]][move[1]] = 1
 
@@ -62,29 +58,41 @@ func alphabeta(bd *Board, ply int, player int, alpha int, beta int) (value int) 
 	switch player {
 	case 1:
 		value = LOSS
-		for i := 0; i < 5; i++ {
-			for j := 0; j < 5; j++ {
-				if bd[i][j] == 0 {
+		for i, row := range bd {
+			for j, marker := range row {
+				if marker == 0 {
 					bd[i][j] = player
 					n := alphabeta(bd, ply+1, -player, alpha, beta)
 					bd[i][j] = 0
-					if n > value { value = n }
-					if value > alpha { alpha = value }
-					if beta <= alpha { return value }
+					if n > value {
+						value = n
+					}
+					if value > alpha {
+						alpha = value
+					}
+					if beta <= alpha {
+						return value
+					}
 				}
 			}
 		}
 	case -1:
 		value = WIN
-		for i := 0; i < 5; i++ {
-			for j := 0; j < 5; j++ {
-				if bd[i][j] == 0 {
+		for i, row := range bd {
+			for j, marker := range row {
+				if marker == 0 {
 					bd[i][j] = player
 					n := alphabeta(bd, ply+1, -player, alpha, beta)
 					bd[i][j] = 0
-					if n < value { value = n }
-					if value < beta { beta = value }
-					if beta <= alpha { return value }
+					if n < value {
+						value = n
+					}
+					if value < beta {
+						beta = value
+					}
+					if beta <= alpha {
+						return value
+					}
 				}
 			}
 		}
@@ -102,8 +110,8 @@ var scores [][]int = [][]int{
 }
 
 func static_value(bd *Board) (score int) {
-	for i := 0; i < 5; i++ {
-		for j := 0; j < 5; j++ {
+	for i, row := range bd {
+		for j, _ := range row {
 			score += bd[i][j] * scores[i][j]
 		}
 	}
@@ -222,12 +230,4 @@ func check_winner(bd *Board) (winner int, end_of_game bool) {
 	}
 	// Get here, all 25 spots on board filled, no winning quadruplet
 	return 0, true
-}
-func mymax(i int, j int) (maximum int) {
-	if i > j {
-		maximum = i
-	} else {
-		maximum = j
-	}
-	return maximum
 }
