@@ -5,6 +5,7 @@ import (
 	"os"
 	"io"
 	"flag"
+	"math/rand"
 )
 
 type Board [5][5]int
@@ -17,7 +18,7 @@ var max_depth int = 6
 func main() {
 	var bd Board
 	var max int
-	var move [2]int
+	var move []int
 	var winner int
 	var end_of_game bool
 	var human_first bool = false
@@ -50,25 +51,40 @@ func main() {
 
 		max = LOSS
 
+		moves := make([][]int, 25)
+		next := 0
+
 		for i, row := range bd {
 			for j, mark := range row {
 				if mark == 0 {
 					bd[i][j] = 1
 					val := alphabeta(&bd, 1, -1, LOSS, WIN)
 					bd[i][j] = 0
-					/// fmt.Printf("Move (%d, %d) value %d\n", i, j, val)
 					if val > max {
+						move = make([]int, 2)
 						move[0] = i
 						move[1] = j
+						moves = make([][]int, 25)
+						next = 1
+						moves[0] = move
 						max = val
+					} else if val == max {
+						move = make([]int, 2)
+						move[0] = i
+						move[1] = j
+						moves[next] = move
+						next++
 					}
 				}
 			}
 		}
 
-		fmt.Printf("My move: (%d, %d)\n", move[0], move[1])
 
-		bd[move[0]][move[1]] = 1
+		r := rand.Intn(next)
+		fmt.Printf("My move: %d %d\n", moves[r][0], moves[r][1])
+
+		bd[moves[r][0]][moves[r][1]] = 1
+
 
 		print_board(&bd)
 
