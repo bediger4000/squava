@@ -5,6 +5,7 @@ import (
 	"os"
 	"io"
 	"flag"
+	"time"
 	"math/rand"
 )
 
@@ -17,8 +18,6 @@ var max_depth int = 6
 
 func main() {
 	var bd Board
-	var max int
-	var move []int
 	var winner int
 	var end_of_game bool
 	var human_first bool = false
@@ -33,6 +32,8 @@ func main() {
 		human_first = false
 	}
 	max_depth = *max_depth_ptr
+
+	rand.Seed(time.Now().UTC().UnixNano())
 
 	for {
 
@@ -49,10 +50,10 @@ func main() {
 			break
 		}
 
-		max = LOSS
+		max := LOSS
 
-		moves := make([][]int, 25)
-		next := 0
+		var moves [][]int
+		var next int
 
 		for i, row := range bd {
 			for j, mark := range row {
@@ -61,7 +62,7 @@ func main() {
 					val := alphabeta(&bd, 1, -1, LOSS, WIN)
 					bd[i][j] = 0
 					if val > max {
-						move = make([]int, 2)
+						move := make([]int, 2)
 						move[0] = i
 						move[1] = j
 						moves = make([][]int, 25)
@@ -69,7 +70,7 @@ func main() {
 						moves[0] = move
 						max = val
 					} else if val == max {
-						move = make([]int, 2)
+						move := make([]int, 2)
 						move[0] = i
 						move[1] = j
 						moves[next] = move
@@ -81,7 +82,7 @@ func main() {
 
 
 		r := rand.Intn(next)
-		fmt.Printf("My move: %d %d\n", moves[r][0], moves[r][1])
+		fmt.Printf("My move: %d %d (%d, %d, %d)\n", moves[r][0], moves[r][1], max, next, r)
 
 		bd[moves[r][0]][moves[r][1]] = 1
 
