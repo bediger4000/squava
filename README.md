@@ -9,7 +9,14 @@ for the player with that mark. Three cells in a row loses.
 There's a little ambiguity in that it isn't clear what to do if a single marker
 fills in a row of 3, and a row of 4. Does that player win or lose?
 
+I chose "win", mainly because it's computationally easier to check for 4-in-a-row
+as a win separately from 3-in-a-row as a loss. After all, every 4-in-a-row has
+3-in-a-row inside it.
+
 ## References
+
+Apparently Squava was invented by
+[Néstor Romeral Andrés](https://bitcoinmagazine.com/articles/rise-of-the-machines-1383576469)
 
 https://boardgamegeek.com/boardgame/112745/squava
 
@@ -48,3 +55,8 @@ that actually produces a worthwhile opponent, and it's also quite simple.
 ## Running the program
 
     ./squava
+    Your move:
+
+You enter 2 digits in the range 0 to 4, with a space or spaces between them.
+The computer ponders, announces its move, and displays the board. Human plays
+'O', computer plays 'X'.
