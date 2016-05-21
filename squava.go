@@ -17,14 +17,13 @@ const LOSS = -1000
 var max_depth int = 6
 
 func main() {
-	var human_first bool
 
 	human_first_ptr := flag.Bool("H", true, "Human takes first move")
 	computer_first_ptr := flag.Bool("C", false, "Computer takes first move")
 	max_depth_ptr := flag.Int("d", 6, "maximum lookahead depth")
 	flag.Parse()
 
-	human_first = *human_first_ptr
+	var human_first bool = *human_first_ptr
 	if *computer_first_ptr {
 		human_first = false
 	}
