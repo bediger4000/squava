@@ -60,3 +60,25 @@ that actually produces a worthwhile opponent, and it's also quite simple.
 You enter 2 digits in the range 0 to 4, with a space or spaces between them.
 The computer ponders, announces its move, and displays the board. Human plays
 'O', computer plays 'X'.
+
+You can have the computer go first:
+
+    ./squava -C
+	My move: 2 2
+       0 1 2 3 4
+    0  _ _ _ _ _
+    1  _ _ _ _ _
+    2  _ _ X _ _
+    3  _ _ _ _ _
+    4  _ _ _ _ _
+    Your move:
+
+I find that a typical game has two phases: opening, where there's up to 5
+pieces on the board.  A midgame, where you try to win by getting 4-in-a-row,
+while keeping the computer from getting 4-in-a-row. Rarely, you can get to a
+third phase, an end game, where no 4-in-a-row is possible, and the goal becomes
+to avoid losing by being forced into 3-in-a-row.
+
+You can see the end game taking place by running two instances of `squava` in
+two `xterms`. Start one as `./squava -C`. It will chose a move first. Type
+that move into the second instance, which expects the "human" to move first.
