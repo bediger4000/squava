@@ -7,7 +7,7 @@ Four cells of the same mark in a row (verical, horizontal or diagonal) wins
 for the player with that mark. Three cells in a row loses.
 
 There's a little ambiguity in that it isn't clear what to do if a single marker
-fills in a row of 3, and a row of 4. Does that player win or lose?
+fills in a row of 3, say, and a diagonal of 4. Does that player win or lose?
 
 I chose "win", mainly because it's computationally easier to check for 4-in-a-row
 as a win separately from 3-in-a-row as a loss. After all, every 4-in-a-row has
