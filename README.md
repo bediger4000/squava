@@ -6,6 +6,8 @@ Like tic-tac-toe on a 5x5 grid of cells. Players alternate marking cells.
 Four cells of the same mark in a row (verical, horizontal or diagonal) wins
 for the player with that mark. Three cells in a row loses.
 
+You can [play it](https://rawgit.com/bediger4000/squava/master/squava.html) right now!
+
 There's a little ambiguity in that it isn't clear what to do if a single marker
 fills in a row of 3, say, and a diagonal of 4. Does that player win or lose?
 
@@ -22,7 +24,7 @@ https://boardgamegeek.com/boardgame/112745/squava
 
 https://en.aeriesguard.com/Squava-puzzles
 
-## This Program
+## Golang Program
 
 Command line, text interface.
 
@@ -30,6 +32,12 @@ Go programming language.
 
 Alpha-Beta minimax, [algorithm](https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning)
 from Wikipedia.
+
+## JavaScript Program
+
+Point-n-click, runs in your browser.
+
+JavaScript transliteration of the Golang version, with a fixed lookahead depth.
 
 ### Static Valuation Function
 
@@ -48,11 +56,11 @@ Other than tic-tac-toe, where it's feasible to check the entire game tree
 on every move, this is the first static valuation function I've written
 that actually produces a worthwhile opponent, and it's also quite simple.
 
-## Building the program
+## Building the Golang program
 
     go build squava.go
 
-## Running the program
+## Running the Golang program
 
     ./squava
     Your move:
