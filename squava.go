@@ -303,11 +303,11 @@ func check_winner(bd *Board) (winner int, end_of_game bool) {
 }
 
 var scores [][]int = [][]int{
-	[]int{0, 1, 2, 1, 0},
-	[]int{1, 2, 2, 2, 1},
-	[]int{2, 2, 3, 2, 2},
-	[]int{1, 2, 2, 2, 1},
-	[]int{0, 1, 2, 1, 0},
+	[]int{2, 2, 2, 2, 2},
+	[]int{2, 1, 1, 1, 2},
+	[]int{2, 1, 0, 1, 2},
+	[]int{2, 1, 1, 1, 2},
+	[]int{2, 2, 2, 2, 2},
 }
 
 func static_value(bd *Board) (score int) {
