@@ -6,9 +6,9 @@ Like tic-tac-toe on a 5x5 grid of cells. Players alternate marking cells.
 Four cells of the same mark in a row (verical, horizontal or diagonal) wins
 for the player with that mark. Three cells in a row loses.
 
-You can [play it](https://rawgit.com/bediger4000/squava/master/squava.html) right now!
+You can [play the JavaScript version](https://rawgit.com/bediger4000/squava/master/squava.html) right now!
 
-There's a little ambiguity in that it isn't clear what to do if a single marker
+The rules have a little ambiguity in that it isn't clear what to do if a single marker
 fills in a row of 3, say, and a diagonal of 4. Does that player win or lose?
 
 I chose "win", mainly because it's computationally easier to check for 4-in-a-row
@@ -33,16 +33,25 @@ Go programming language.
 Alpha-Beta minimax, [algorithm](https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning)
 from Wikipedia.
 
+The lookahead (number of moves ahead the code considers) varies during the game.
+If less than 8 marks appear on the board, it looks ahead 4 moves (2 moves each for both players).
+If less than 13 marks appear on the board, it looks ahead 3 moves for each player.
+If more than 12 marks appear, it looks ahead 4 moves for each player.
+This is something I set by trial and error. If the human plays right in the first few moves
+when the program isn't looking too far ahead, the human can win.
+
 ## JavaScript Program
 
-Point-n-click, runs in your browser.
+Point-n-click, runs in your browser. Single HTML file.
 
-JavaScript transliteration of the Golang version, with a fixed lookahead depth.
+JavaScript transliteration of the Golang version.
 
 ### Static Valuation Function
 
-By default it looks 6 plies into the game tree. That's 3 moves each for 'X' and
-'O'. The static value has a slight bias towards moves at the center of the
+After reaching its lookahead depth (which varies throughout the game) the
+code does a static valuation of the board - it assigns a numerical value
+to the layout of X's and O's.
+The static value has a slight bias towards moves at the corners and edges of the
 board, and a slight bias towards winning in as few moves as possible.
 
 After the slight biases, it gives larger magnitude scores for having
