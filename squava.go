@@ -16,12 +16,33 @@ const LOSS = -1000
 
 var max_depth int = 6
 
+// Arrays of losing triplets and winning quads, indexed
+// by <x,y> coords of all pairs composing each of the quads
+// or triplets. Makes check_winner() a lot more efficient.
+var indexed_losing_triplets [5][5][][][]int
+var indexed_winning_quads [5][5][][][]int
+
+var move_counter int = 0
+
 func main() {
 
 	human_first_ptr := flag.Bool("H", true, "Human takes first move")
 	computer_first_ptr := flag.Bool("C", false, "Computer takes first move")
 	max_depth_ptr := flag.Int("d", 6, "maximum lookahead depth")
 	flag.Parse()
+
+	// Set up for use by check_winner()
+	for _, triplet := range losing_triplets {
+		for _, pair := range triplet {
+			indexed_losing_triplets[pair[0]][pair[1]] = append(indexed_losing_triplets[pair[0]][pair[1]], triplet)
+		}
+	}
+	for _, quad := range winning_quads {
+		for _, pair := range quad {
+			indexed_winning_quads [pair[0]][pair[1]] = append(
+				indexed_winning_quads [pair[0]][pair[1]], quad)
+		}
+	}
 
 	var human_first bool = *human_first_ptr
 	if *computer_first_ptr {
@@ -39,15 +60,16 @@ func main() {
 
 	for !end_of_game {
 
+		var l, m int
 		if human_first {
-			l, m := read_move(&bd)
+			l, m = read_move(&bd)
 			bd[l][m] = -1
 			move_counter++
 		}
 
 		human_first = true
 
-		winner, end_of_game = check_winner(&bd)
+		winner, end_of_game = check_winner(&bd, l, m)
 
 		if end_of_game {
 			break
@@ -58,14 +80,15 @@ func main() {
 
 		max := LOSS
 
-		if move_counter < 4 { max_depth = 4 }
-		if move_counter > 3 { max_depth = 6 }
-		if move_counter > 10 { max_depth = 8 }
+		if move_counter < 4 { max_depth = 6 }
+		if move_counter > 3 { max_depth = 8 }
+		if move_counter > 10 { max_depth = *max_depth_ptr }
+
 		for i, row := range bd {
 			for j, mark := range row {
 				if mark == 0 {
 					bd[i][j] = 1
-					val := alphabeta(&bd, 1, -1, LOSS, WIN)
+					val := alphabeta(&bd, 1, -1, LOSS, WIN, i, j)
 					bd[i][j] = 0
 					if val >= max {
 						if val > max {
@@ -88,7 +111,7 @@ func main() {
 
 		print_board(&bd)
 
-		winner, end_of_game = check_winner(&bd)
+		winner, end_of_game = check_winner(&bd, moves[r][0], moves[r][1])
 	}
 
 	var phrase string
@@ -105,8 +128,8 @@ func main() {
 	os.Exit(0)
 }
 
-func alphabeta(bd *Board, ply int, player int, alpha int, beta int) (value int) {
-	winner, end_of_game := check_winner(bd)
+func alphabeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int) (value int) {
+	winner, end_of_game := check_winner(bd, x, y)
 	if end_of_game {
 		switch winner {
 		case 1:
@@ -129,7 +152,7 @@ func alphabeta(bd *Board, ply int, player int, alpha int, beta int) (value int) 
 			for j, marker := range row {
 				if marker == 0 {
 					bd[i][j] = player
-					n := alphabeta(bd, ply+1, -player, alpha, beta)
+					n := alphabeta(bd, ply+1, -player, alpha, beta, i, j)
 					bd[i][j] = 0
 					if n > value {
 						value = n
@@ -149,7 +172,7 @@ func alphabeta(bd *Board, ply int, player int, alpha int, beta int) (value int) 
 			for j, marker := range row {
 				if marker == 0 {
 					bd[i][j] = player
-					n := alphabeta(bd, ply+1, -player, alpha, beta)
+					n := alphabeta(bd, ply+1, -player, alpha, beta, i, j)
 					bd[i][j] = 0
 					if n < value {
 						value = n
@@ -269,28 +292,31 @@ var winning_quads [][][]int = [][][]int{
 	[][]int{[]int{4, 1}, []int{3, 2}, []int{2, 3}, []int{1, 4}},
 }
 
-func check_winner(bd *Board) (winner int, end_of_game bool) {
-	for _, quad := range winning_quads {
+func check_winner(bd *Board, x int, y int) (winner int, end_of_game bool) {
+
+	relevant_quads := indexed_winning_quads[x][y]
+	for _, quad := range relevant_quads {
 		sum := bd[quad[0][0]][quad[0][1]]
 		sum += bd[quad[1][0]][quad[1][1]]
 		sum += bd[quad[2][0]][quad[2][1]]
 		sum += bd[quad[3][0]][quad[3][1]]
 
 		if sum == 4 || sum == -4 {
-			winner := sum / 4
-			return winner, true
+			return sum/4, true
 		}
 	}
-	for _, triplet := range losing_triplets {
+
+	relevant_triplets := indexed_losing_triplets[x][y]
+	for _, triplet := range relevant_triplets {
 		sum := bd[triplet[0][0]][triplet[0][1]]
 		sum += bd[triplet[1][0]][triplet[1][1]]
 		sum += bd[triplet[2][0]][triplet[2][1]]
 
 		if sum == 3 || sum == -3 {
-			loser := sum / 3
-			return -loser, true
+			return -sum/3, true
 		}
 	}
+
 	for _, row := range bd {
 		for _, val := range row {
 			if val == 0 {
