@@ -8,6 +8,9 @@ table.fixed td { overflow: hidden; }
 </style>
 
 <script language="javascript">
+
+// The 5x5 array of places for 'X' or 'O' marks.
+// (0,0) in upper left, (4,4) in lower right.
 var board = new Array(5);
 for (var i = 0; i < 5; ++i) {
 	board[i] = new Array(5);
@@ -15,9 +18,10 @@ for (var i = 0; i < 5; ++i) {
 		board[i][j] = 0;
 	}
 }
+
 var game_over = false;
-var WIN = 1000;
-var LOSS = -1000;
+var WIN = 1000;   // static value score for a win.
+var LOSS = -1000; // score for a loss.
 var max_depth = 6;
 var move_counter = 0;
 
@@ -26,7 +30,7 @@ function clork(o, n, m) {
 	var td = o.parentNode;
 	td.innerHTML = 'X';
 	board[n][m] = -1;
-	color_winner();
+	color_winner(n, m);
 	++move_counter;
 	if (!game_over) { mymove(); }
 }
@@ -54,7 +58,7 @@ function mymove() {
 			if (board[i][j] == 0) {
 
 				board[i][j] = 1;
-				var val = alphabeta(1, -1, LOSS, WIN);
+				var val = alphabeta(1, -1, LOSS, WIN, i, j);
 				board[i][j] = 0;
 
 				if (val >= max) {
@@ -74,21 +78,19 @@ function mymove() {
 	var q = moves[r][1];
 	document.getElementById('td'+p+q).innerHTML = 'O';
 	board[p][q] = 1;
-	color_winner();
+	color_winner(p, q);
 	++move_counter;
 }
 
-// Could make color_winner() more efficient by passing in the last
-// move like: color_winner(x, y), and then only checking triplets
-// and quads involving [x,y]
-function color_winner() {
+function color_winner(x, y) {
 	if (!game_over) {
-		var we = check_winner();
+		var we = check_winner(x, y);
 		if (we[1]) {
 			game_over = true;
 			// Find winning quad, color it green
-			for (var idx in winning_quads) {
-					var quad = winning_quads[idx];
+			var relevant_quads = indexed_winning_quads[x][y];
+			for (var idx in relevant_quads) {
+					var quad = relevant_quads[idx];
 					var sum = board[quad[0][0]][quad[0][1]];
 					sum += board[quad[1][0]][quad[1][1]];
 					sum += board[quad[2][0]][quad[2][1]];
@@ -105,8 +107,9 @@ function color_winner() {
 					}
 			}
 			// Find losing triplet, color it red.
-			for (var idx in losing_triplets) {
-				var triplet = losing_triplets[idx];
+			var relevant_triplets = indexed_losing_triplets[x][y];
+			for (var idx in relevant_triplets) {
+				var triplet = relevant_triplets[idx];
 				var sum = board[triplet[0][0]][triplet[0][1]];
 				sum += board[triplet[1][0]][triplet[1][1]];
 				sum += board[triplet[2][0]][triplet[2][1]];
@@ -125,12 +128,14 @@ function color_winner() {
 	}
 }
 
-function alphabeta(ply, player, alpha, beta) {
-	var we = check_winner();
+function alphabeta(ply, player, alpha, beta, x, y) {
+	var we = check_winner(x, y);
 	// This if-block constitutes part of the static
-	// valuation - give a big value to wins, and a
-	// big negative value to losses.
-	if (we[1]) {  // game's over, some player won or lost
+	// valuation - give a big positive value to wins,
+	// and a big negative value to losses. It's outside
+	// of function static_value() to take advantage of
+	// the return value of check_winner()
+	if (we[1]) {
 		switch (we[0]) {
 		case 1:
 			return WIN - ply;
@@ -155,7 +160,7 @@ function alphabeta(ply, player, alpha, beta) {
 				var marker = board[i][j];
 				if (marker == 0) {
 					board[i][j] = player;
-					n = alphabeta(ply+1, -player, alpha, beta);
+					n = alphabeta(ply+1, -player, alpha, beta, i, j);
 					board[i][j] = 0;
 					if (n > value) {
 						value = n;
@@ -177,7 +182,7 @@ function alphabeta(ply, player, alpha, beta) {
 				var marker = board[i][j];
 				if (marker == 0) {
 					board[i][j] = player;
-					n = alphabeta(ply+1, -player, alpha, beta);
+					n = alphabeta(ply+1, -player, alpha, beta, i, j);
 					board[i][j] = 0;
 					if (n < value) {
 						value = n;
@@ -196,6 +201,8 @@ function alphabeta(ply, player, alpha, beta) {
 	return value;
 }
 
+// Used in static_value() - minor biases given to
+// marks in these positions.
 var scores = [
     [3, 3, 2, 2, 3],
     [3, 2, 1, 2, 2],
@@ -204,6 +211,9 @@ var scores = [
     [3, 3, 2, 3, 3]
 ];
 
+// List of (x,y) coords of 3-in-a-row cells that
+// would lose. Not used directly. Values used to
+// build indexed_losing_triplets below.
 var losing_triplets = [
 	[[0, 0], [1, 0], [2, 0]],
 	[[0, 0], [0, 1], [0, 2]],
@@ -255,6 +265,29 @@ var losing_triplets = [
 	[[2, 4], [3, 4], [4, 4]]
 ];
 
+// Set up a 5x5 matrix of arrays of losing triplets
+// for use in check_winner() - indexed_losing_triplets[x][y]
+// is a list of losing triplets that contain the [x,y] mark.
+var indexed_losing_triplets = new Array();
+for (var m = 0; m < 5; ++m) {
+	indexed_losing_triplets[m] = new Array();
+	for (var n = 0; n < 5; ++n) {
+		indexed_losing_triplets[m][n] = new Array();
+	}
+}
+var triplets_count = 0;
+for (var i in losing_triplets) {
+	++triplets_count;
+	var triplets = losing_triplets[i];
+	for (var j in triplets) {
+		var pair = triplets[j];
+		indexed_losing_triplets[pair[0]][pair[1]].push(triplets);
+	}
+}
+
+// List of (x,y) coords of 4-in-a-row cells that
+// would win. Not used directly. Values used to
+// build indexed_winning_triplets below.
 var winning_quads = [
 	[[0, 0], [1, 0], [2, 0], [3, 0]],
 	[[0, 0], [0, 1], [0, 2], [0, 3]],
@@ -286,11 +319,35 @@ var winning_quads = [
 	[[4, 1], [3, 2], [2, 3], [1, 4]]
 ];
 
-// check_winner() could be faster by pasing in [x,y] of last move made.
-// That way, it would only have to check a few triplets and quads.
-function check_winner() {
-	for (var idx in winning_quads) {
-		var quad = winning_quads[idx];
+// Set up a 5x5 matrix of arrays of winning quads.
+// for use in check_winner() - indexed_winning_quads[x][y]
+// is a list of winning quads that contain the [x,y] mark.
+var indexed_winning_quads = new Array();
+for (var m = 0; m < 5; ++m) {
+	indexed_winning_quads[m] = new Array();
+	for (var n = 0; n < 5; ++n) {
+		indexed_winning_quads[m][n] = new Array();
+	}
+}
+for (var i in winning_quads) {
+	var quad = winning_quads[i];
+	for (var j in quad) {
+		var pair = winning_quads[i][j];
+		indexed_winning_quads[pair[0]][pair[1]].push(quad);
+	}
+}
+
+// Look through the board, decide if (1) the game is over,
+// and who won. So, two return values, which is a direct
+// carry-over from the Golang version. Formal arguments
+// x, y are the coords of the last move performed, so that
+// check_winner() doesn't have to look through all losing
+// triplets, and all winning quads, just the ones involving
+// the last move.
+function check_winner(x, y) {
+	var relevant_quads = indexed_winning_quads[x][y];
+	for (var idx in relevant_quads) {
+		var quad = relevant_quads[idx];
 		var sum = board[quad[0][0]][quad[0][1]];
 		sum += board[quad[1][0]][quad[1][1]];
 		sum += board[quad[2][0]][quad[2][1]];
@@ -300,14 +357,15 @@ function check_winner() {
 			return [sum/4, true];
 		}
 	}
-	for (var idx in losing_triplets) {
-		var triplet = losing_triplets[idx];
+	var relevant_losing_triplets = indexed_losing_triplets[x][y];
+	for (var idx in relevant_losing_triplets) {
+		var triplet = relevant_losing_triplets[idx];
 		var sum = board[triplet[0][0]][triplet[0][1]];
 		sum += board[triplet[1][0]][triplet[1][1]];
 		sum += board[triplet[2][0]][triplet[2][1]];
 
 		if (sum == 3 || sum == -3) {
-			return [-sum/3, true];
+			return [-sum/3, true];  // The '-' means return winner
 		}
 	}
 	for (var idx in board) {
@@ -318,16 +376,25 @@ function check_winner() {
 		}
 	}
 	// Get here, all 25 spots on board filled, no winning quadruplet
+	// I don't know if this can ever happen.
 	return [0, true];
 }
 
 function static_value() {
+	// Value of board[x][y] used to calculate the score.
+
 	var score = 0;
+	// Bias for positions of marks
 	for (var i = 0; i < 5; ++i) {
 		for (var j = 0; j < 5; ++j) {
 			score += board[i][j] * scores[i][j];
 		}
 	}
+
+	// Give a value to each filled in 3 out of 4
+	// that makes a win. Because it uses the value
+	// of board[x][y], human 3-of-4 decrease the score,
+	// computer 3-of-4 increase the score.
 	for (var idx in winning_quads) {
 		var quad = winning_quads[idx];
 		var sum = board[quad[0][0]][quad[0][1]];
@@ -338,47 +405,48 @@ function static_value() {
 			score += sum * 10
 		}
     }
-    return score
 
+    return score
 }
+
 function resetgame() {
-	board = new Array(5);
+	// board = new Array(5); // Totally new board
 	for (var i = 0; i < 5; ++i) {
-		board[i] = new Array(5);
+		//board[i] = new Array(5);
 		for (var j = 0; j < 5; ++j) {
-			board[i][j] = 0;
-			var nm = "td"+i+j;
-			var ob = document.getElementById(nm);
-			ob.innerHTML = '<input type="button" name="b'+i+j+'" onclick="clork(this, '+i+', '+j+');" />';
-			ob.style.backgroundColor = 'white';
+			board[i][j] = 0;  // Zero the cells of the board
+			// 
+			var tdob = document.getElementById('td'+i+j);
+			tdob.innerHTML = '<input type="button" name="b'+i+j+'" onclick="clork(this, '+i+', '+j+');" />';
+			tdob.style.backgroundColor = 'white';
 		}
 	}
 	move_counter = 0;
 	game_over = false;
 }
+
 function cfirst() {
 	mymove();
-	// maybe make the "Computer First" button disappear?
 }
 </script>
 
 </head>
 <body>
 <h1>Squava</h1>
-<form name="f">
-	<table border="1" class="fixed">
-	<tbody>
-		<tr><td valign="middle" align="center" style="height:30px;width:20%" id="td00"><input type="button" name="b00" onclick="clork(this, 0, 0);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td10"><input type="button" name="b10" onclick="clork(this, 1, 0);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td20"><input type="button" name="b20" onclick="clork(this, 2, 0);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td30"><input type="button" name="b30" onclick="clork(this, 3, 0);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td40"><input type="button" name="b40" onclick="clork(this, 4, 0);" /></td></tr>
-		<tr><td valign="middle" align="center" style="height:30px;width:20%" id="td01"><input type="button" name="b01" onclick="clork(this, 0, 1);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td11"><input type="button" name="b11" onclick="clork(this, 1, 1);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td21"><input type="button" name="b21" onclick="clork(this, 2, 1);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td31"><input type="button" name="b31" onclick="clork(this, 3, 1);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td41"><input type="button" name="b41" onclick="clork(this, 4, 1);" /></td></tr>
-		<tr><td valign="middle" align="center" style="height:30px;width:20%" id="td02"><input type="button" name="b02" onclick="clork(this, 0, 2);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td12"><input type="button" name="b12" onclick="clork(this, 1, 2);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td22"><input type="button" name="b22" onclick="clork(this, 2, 2);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td32"><input type="button" name="b32" onclick="clork(this, 3, 2);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td42"><input type="button" name="b42" onclick="clork(this, 4, 2);" /></td></tr>
-		<tr><td valign="middle" align="center" style="height:30px;width:20%" id="td03"><input type="button" name="b03" onclick="clork(this, 0, 3);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td13"><input type="button" name="b13" onclick="clork(this, 1, 3);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td23"><input type="button" name="b23" onclick="clork(this, 2, 3);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td33"><input type="button" name="b33" onclick="clork(this, 3, 3);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td43"><input type="button" name="b43" onclick="clork(this, 4, 3);" /></td></tr>
-		<tr><td valign="middle" align="center" style="height:30px;width:20%" id="td04"><input type="button" name="b04" onclick="clork(this, 0, 4);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td14"><input type="button" name="b14" onclick="clork(this, 1, 4);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td24"><input type="button" name="b24" onclick="clork(this, 2, 4);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td34"><input type="button" name="b34" onclick="clork(this, 3, 4);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td44"><input type="button" name="b44" onclick="clork(this, 4, 4);" /></td></tr>
-	</tbody>
-	</table>
-	<br/>
-	<input type="button" name="rstbtn" value="New Game" onclick="resetgame();" />
-	<br/>
-	<input type="button" name="firstbtn" value="Computer First" onclick="cfirst();" />
-</form>
+	<form name="f">
+		<table border="1" class="fixed">
+		<tbody>
+			<tr><td valign="middle" align="center" style="height:30px;width:20%" id="td00"><input type="button" name="b00" onclick="clork(this, 0, 0);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td10"><input type="button" name="b10" onclick="clork(this, 1, 0);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td20"><input type="button" name="b20" onclick="clork(this, 2, 0);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td30"><input type="button" name="b30" onclick="clork(this, 3, 0);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td40"><input type="button" name="b40" onclick="clork(this, 4, 0);" /></td></tr>
+			<tr><td valign="middle" align="center" style="height:30px;width:20%" id="td01"><input type="button" name="b01" onclick="clork(this, 0, 1);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td11"><input type="button" name="b11" onclick="clork(this, 1, 1);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td21"><input type="button" name="b21" onclick="clork(this, 2, 1);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td31"><input type="button" name="b31" onclick="clork(this, 3, 1);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td41"><input type="button" name="b41" onclick="clork(this, 4, 1);" /></td></tr>
+			<tr><td valign="middle" align="center" style="height:30px;width:20%" id="td02"><input type="button" name="b02" onclick="clork(this, 0, 2);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td12"><input type="button" name="b12" onclick="clork(this, 1, 2);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td22"><input type="button" name="b22" onclick="clork(this, 2, 2);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td32"><input type="button" name="b32" onclick="clork(this, 3, 2);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td42"><input type="button" name="b42" onclick="clork(this, 4, 2);" /></td></tr>
+			<tr><td valign="middle" align="center" style="height:30px;width:20%" id="td03"><input type="button" name="b03" onclick="clork(this, 0, 3);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td13"><input type="button" name="b13" onclick="clork(this, 1, 3);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td23"><input type="button" name="b23" onclick="clork(this, 2, 3);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td33"><input type="button" name="b33" onclick="clork(this, 3, 3);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td43"><input type="button" name="b43" onclick="clork(this, 4, 3);" /></td></tr>
+			<tr><td valign="middle" align="center" style="height:30px;width:20%" id="td04"><input type="button" name="b04" onclick="clork(this, 0, 4);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td14"><input type="button" name="b14" onclick="clork(this, 1, 4);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td24"><input type="button" name="b24" onclick="clork(this, 2, 4);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td34"><input type="button" name="b34" onclick="clork(this, 3, 4);" /></td><td valign="middle" align="center" style="height:30px;width:20%" id="td44"><input type="button" name="b44" onclick="clork(this, 4, 4);" /></td></tr>
+		</tbody>
+		</table>
+		<br/>
+		<input type="button" name="rstbtn" value="New Game" onclick="resetgame();" />
+		<br/>
+		<input type="button" name="firstbtn" value="Computer First" onclick="cfirst();" />
+	</form>
 </body>
 </html>
