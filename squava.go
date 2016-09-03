@@ -11,10 +11,10 @@ import (
 
 type Board [5][5]int
 
-const WIN = 1000
-const LOSS = -1000
+const WIN = 10000
+const LOSS = -10000
 
-var max_depth int = 6
+var max_depth int = 10
 
 // Arrays of losing triplets and winning quads, indexed
 // by <x,y> coords of all pairs composing each of the quads
@@ -31,7 +31,7 @@ func main() {
 	max_depth_ptr := flag.Int("d", 6, "maximum lookahead depth")
 	flag.Parse()
 
-	// Set up for use by check_winner()
+	// Set up for use by static_value()
 	for _, triplet := range losing_triplets {
 		for _, pair := range triplet {
 			indexed_losing_triplets[pair[0]][pair[1]] = append(indexed_losing_triplets[pair[0]][pair[1]], triplet)
@@ -53,7 +53,6 @@ func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	var bd Board
-	var winner int
 	var end_of_game bool = false
 
 	move_counter := 0
@@ -64,16 +63,15 @@ func main() {
 		if human_first {
 			l, m = read_move(&bd)
 			bd[l][m] = -1
+			end_of_game, _ = static_value(&bd, 0, -1, l, m)
 			move_counter++
 		}
-
-		human_first = true
-
-		winner, end_of_game = check_winner(&bd, l, m)
 
 		if end_of_game {
 			break
 		}
+
+		human_first = true
 
 		var moves [25][2]int
 		var next int = 0
@@ -111,11 +109,13 @@ func main() {
 
 		print_board(&bd)
 
-		winner, end_of_game = check_winner(&bd, moves[r][0], moves[r][1])
+		end_of_game, _ = static_value(&bd, 0, 1, moves[r][0], moves[r][1])
 	}
 
+	print_board(&bd)
+
 	var phrase string
-	switch winner {
+	switch find_winner(&bd) {
 	case 1:
 		phrase = "X wins\n"
 	case 0:
@@ -128,21 +128,102 @@ func main() {
 	os.Exit(0)
 }
 
-func alphabeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int) (value int) {
-	winner, end_of_game := check_winner(bd, x, y)
-	if end_of_game {
-		switch winner {
-		case 1:
-			return WIN - ply
-		case -1:
-			return LOSS + ply
-		case 0:
-			return 0
+func find_winner(bd *Board) int {
+	for _, quad := range winning_quads {
+		sum := bd[quad[0][0]][quad[0][1]]
+		sum += bd[quad[1][0]][quad[1][1]]
+		sum += bd[quad[2][0]][quad[2][1]]
+		sum += bd[quad[3][0]][quad[3][1]]
+
+		if sum == 4 || sum == -4 {
+			return bd[quad[0][0]][quad[0][1]]
+		}
+	}
+
+	for _, triplet := range losing_triplets {
+		sum := bd[triplet[0][0]][triplet[0][1]]
+		sum += bd[triplet[1][0]][triplet[1][1]]
+		sum += bd[triplet[2][0]][triplet[2][1]]
+
+		if sum == 3 || sum == -3 {
+			return -bd[triplet[0][0]][triplet[0][1]]
+		}
+	}
+
+	return 0
+}
+
+func static_value(bd *Board, ply int, player int, x, y int) (stop_recursing bool, value int) {
+
+	relevant_quads := indexed_winning_quads[x][y]
+	for _, quad := range relevant_quads {
+		sum := bd[quad[0][0]][quad[0][1]]
+		sum += bd[quad[1][0]][quad[1][1]]
+		sum += bd[quad[2][0]][quad[2][1]]
+		sum += bd[quad[3][0]][quad[3][1]]
+
+		if sum == 4 || sum == -4 {
+			return true, bd[quad[0][0]][quad[0][1]]*(WIN - ply)
+		}
+	}
+
+	relevant_triplets := indexed_losing_triplets[x][y]
+	for _, triplet := range relevant_triplets {
+		sum := bd[triplet[0][0]][triplet[0][1]]
+		sum += bd[triplet[1][0]][triplet[1][1]]
+		sum += bd[triplet[2][0]][triplet[2][1]]
+
+		if sum == 3 || sum == -3 {
+			return true, -bd[triplet[0][0]][triplet[0][1]]*(WIN - ply)
 		}
 	}
 
 	if ply == max_depth {
-		return static_value(bd)
+
+		for _, quad := range winning_quads {
+			sum := bd[quad[0][0]][quad[0][1]]
+			sum += bd[quad[1][0]][quad[1][1]]
+			sum += bd[quad[2][0]][quad[2][1]]
+			sum += bd[quad[3][0]][quad[3][1]]
+
+			if sum == 3 || sum == -3 {
+				value += sum * 10
+			}
+		}
+
+		if value == 0 {
+			// Bive it a slight bias for those early
+			// moves when all losing-triplets and winning-quads
+			// are beyond the horizon.
+			for i, row := range bd {
+				for j, _ := range row {
+					value += bd[i][j] * scores[i][j]
+				}
+			}
+		}
+
+		return true, value
+	}
+
+	// Not at max depth of search, but the whole board
+	// might be filled in.
+	for _, row := range bd {
+		for _, val := range row {
+			if val == 0 {
+				return false, 0
+			}
+		}
+	}
+	// Get here, all 25 spots on board filled, no winning quadruplet
+	return true, 0
+}
+
+func alphabeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int) (value int) {
+
+	stop_recursing, score := static_value(bd, ply, player, x, y)
+
+	if stop_recursing {
+		return score;
 	}
 
 	switch player {
@@ -292,67 +373,12 @@ var winning_quads [][][]int = [][][]int{
 	[][]int{[]int{4, 1}, []int{3, 2}, []int{2, 3}, []int{1, 4}},
 }
 
-func check_winner(bd *Board, x int, y int) (winner int, end_of_game bool) {
-
-	relevant_quads := indexed_winning_quads[x][y]
-	for _, quad := range relevant_quads {
-		sum := bd[quad[0][0]][quad[0][1]]
-		sum += bd[quad[1][0]][quad[1][1]]
-		sum += bd[quad[2][0]][quad[2][1]]
-		sum += bd[quad[3][0]][quad[3][1]]
-
-		if sum == 4 || sum == -4 {
-			return sum/4, true
-		}
-	}
-
-	relevant_triplets := indexed_losing_triplets[x][y]
-	for _, triplet := range relevant_triplets {
-		sum := bd[triplet[0][0]][triplet[0][1]]
-		sum += bd[triplet[1][0]][triplet[1][1]]
-		sum += bd[triplet[2][0]][triplet[2][1]]
-
-		if sum == 3 || sum == -3 {
-			return -sum/3, true
-		}
-	}
-
-	for _, row := range bd {
-		for _, val := range row {
-			if val == 0 {
-				return 0, false
-			}
-		}
-	}
-	// Get here, all 25 spots on board filled, no winning quadruplet
-	return 0, true
-}
-
 var scores [][]int = [][]int{
-	[]int{2, 2, 2, 2, 2},
-	[]int{2, 1, 1, 1, 2},
-	[]int{2, 1, 0, 1, 2},
-	[]int{2, 1, 1, 1, 2},
-	[]int{2, 2, 2, 2, 2},
-}
-
-func static_value(bd *Board) (score int) {
-	for i, row := range bd {
-		for j, _ := range row {
-			score += bd[i][j] * scores[i][j]
-		}
-	}
-	for _, quad := range winning_quads {
-		sum := bd[quad[0][0]][quad[0][1]]
-		sum += bd[quad[1][0]][quad[1][1]]
-		sum += bd[quad[2][0]][quad[2][1]]
-		sum += bd[quad[3][0]][quad[3][1]]
-
-		if sum == 3 || sum == -3 {
-			score += sum * 10
-		}
-	}
-	return score
+	[]int{3, 3, 0, 3, 3},
+	[]int{3, 4, 1, 4, 3},
+	[]int{0, 1, 0, 1, 2},
+	[]int{3, 4, 1, 4, 3},
+	[]int{3, 3, 0, 3, 3},
 }
 
 func read_move(bd *Board) (x, y int) {
