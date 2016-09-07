@@ -28,7 +28,7 @@ func main() {
 
 	human_first_ptr := flag.Bool("H", true, "Human takes first move")
 	computer_first_ptr := flag.Bool("C", false, "Computer takes first move")
-	max_depth_ptr := flag.Int("d", 6, "maximum lookahead depth")
+	max_depth_ptr := flag.Int("d", 10, "maximum lookahead depth")
 	flag.Parse()
 
 	// Set up for use by static_value()
@@ -39,8 +39,8 @@ func main() {
 	}
 	for _, quad := range winning_quads {
 		for _, pair := range quad {
-			indexed_winning_quads [pair[0]][pair[1]] = append(
-				indexed_winning_quads [pair[0]][pair[1]], quad)
+			indexed_winning_quads[pair[0]][pair[1]] = append(
+				indexed_winning_quads[pair[0]][pair[1]], quad)
 		}
 	}
 
@@ -49,6 +49,7 @@ func main() {
 		human_first = false
 	}
 	max_depth = *max_depth_ptr
+fmt.Printf("Max depth pointer %d\n", *max_depth_ptr)
 
 	rand.Seed(time.Now().UTC().UnixNano())
 
@@ -78,9 +79,15 @@ func main() {
 
 		max := LOSS
 
-		if move_counter < 4 { max_depth = 6 }
-		if move_counter > 3 { max_depth = 8 }
-		if move_counter > 10 { max_depth = *max_depth_ptr }
+		if move_counter < 4 {
+			max_depth = 6
+		}
+		if move_counter > 3 {
+			max_depth = 8
+		}
+		if move_counter > 10 {
+			max_depth = *max_depth_ptr
+		}
 
 		for i, row := range bd {
 			for j, mark := range row {
@@ -112,18 +119,18 @@ func main() {
 		end_of_game, _ = static_value(&bd, 0, 1, moves[r][0], moves[r][1])
 	}
 
-	print_board(&bd)
-
 	var phrase string
 	switch find_winner(&bd) {
 	case 1:
-		phrase = "X wins\n"
+		phrase = "\nX wins\n"
 	case 0:
-		phrase = "Cat wins\n"
+		phrase = "\nCat wins\n"
 	case -1:
-		phrase = "O wins\n"
+		phrase = "\nO wins\n"
 	}
 	fmt.Printf(phrase)
+
+	print_board(&bd)
 
 	os.Exit(0)
 }
@@ -153,6 +160,18 @@ func find_winner(bd *Board) int {
 	return 0
 }
 
+// It turns out that you only have to look at
+// the 4-in-a-rows that contain these 9 cells
+// to check every 4-in-a-row. Similarly, you
+// only need to check these 9 cells to check
+// all the losing 3-in-a-row combos. You don't
+// have to look at each and every cell.
+var checkable_cells [9][2]int = [9][2]int{
+	{0, 2}, {1, 2}, {2, 0},
+	{2, 1}, {2, 2}, {2, 3},
+	{2, 4}, {3, 2}, {4, 2},
+}
+
 func static_value(bd *Board, ply int, player int, x, y int) (stop_recursing bool, value int) {
 
 	relevant_quads := indexed_winning_quads[x][y]
@@ -163,7 +182,7 @@ func static_value(bd *Board, ply int, player int, x, y int) (stop_recursing bool
 		sum += bd[quad[3][0]][quad[3][1]]
 
 		if sum == 4 || sum == -4 {
-			return true, bd[quad[0][0]][quad[0][1]]*(WIN - ply)
+			return true, bd[quad[0][0]][quad[0][1]] * (WIN - ply)
 		}
 	}
 
@@ -174,20 +193,35 @@ func static_value(bd *Board, ply int, player int, x, y int) (stop_recursing bool
 		sum += bd[triplet[2][0]][triplet[2][1]]
 
 		if sum == 3 || sum == -3 {
-			return true, -bd[triplet[0][0]][triplet[0][1]]*(WIN - ply)
+			return true, -bd[triplet[0][0]][triplet[0][1]] * (WIN - ply)
 		}
 	}
 
 	if ply == max_depth {
 
-		for _, quad := range winning_quads {
-			sum := bd[quad[0][0]][quad[0][1]]
-			sum += bd[quad[1][0]][quad[1][1]]
-			sum += bd[quad[2][0]][quad[2][1]]
-			sum += bd[quad[3][0]][quad[3][1]]
+		for _, cell := range checkable_cells {
+			relevant_quads := indexed_winning_quads[cell[0]][cell[1]]
+			for _, quad := range relevant_quads {
+				sum := bd[quad[0][0]][quad[0][1]]
+				sum += bd[quad[1][0]][quad[1][1]]
+				sum += bd[quad[2][0]][quad[2][1]]
+				sum += bd[quad[3][0]][quad[3][1]]
+				if sum == 3 || sum == -3 {
+					value += sum * 10
+				}
+			}
+		}
 
-			if sum == 3 || sum == -3 {
-				value += sum * 10
+		// Try to stay out of 2-of-losing-3 triplets
+		for _, cell := range checkable_cells {
+			relevant_triplets := indexed_losing_triplets[cell[0]][cell[1]]
+			for _, triplet := range relevant_triplets {
+				sum := bd[triplet[0][0]][triplet[0][1]]
+				sum += bd[triplet[1][0]][triplet[1][1]]
+				sum += bd[triplet[2][0]][triplet[2][1]]
+				if sum == 3 || sum == -3 {
+					value += sum * 5
+				}
 			}
 		}
 
@@ -223,7 +257,7 @@ func alphabeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 	stop_recursing, score := static_value(bd, ply, player, x, y)
 
 	if stop_recursing {
-		return score;
+		return score
 	}
 
 	switch player {
