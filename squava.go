@@ -49,7 +49,6 @@ func main() {
 		human_first = false
 	}
 	max_depth = *max_depth_ptr
-fmt.Printf("Max depth pointer %d\n", *max_depth_ptr)
 
 	rand.Seed(time.Now().UTC().UnixNano())
 
@@ -426,10 +425,14 @@ func read_move(bd *Board) (x, y int) {
 			fmt.Printf("Failed to read: %v\n", err)
 			os.Exit(1)
 		}
-		if bd[x][y] == 0 {
+		switch {
+		case x < 0 || x > 4 || y < 0 || y > 4:
+			fmt.Printf("Choose two numbers between 0 and 4, try again\n")
+		case bd[x][y] == 0:
 			break
+		case bd[x][y] != 0:
+			fmt.Printf("Cell (%d, %d) already occupied, try again\n", x, y)
 		}
-		fmt.Printf("Cell (%d, %d) already occupied, try again\n", x, y)
 	}
 	return x, y
 }
