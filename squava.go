@@ -14,78 +14,76 @@ type Board [5][5]int
 const WIN = 10000
 const LOSS = -10000
 
-var max_depth int = 10
+var maxDepth int = 10
 
 // Arrays of losing triplets and winning quads, indexed
 // by <x,y> coords of all pairs composing each of the quads
-// or triplets. Makes check_winner() a lot more efficient.
-var indexed_losing_triplets [5][5][][][]int
-var indexed_winning_quads [5][5][][][]int
-
-var move_counter int = 0
+// or triplets. Makes staticValue() a lot more efficient
+var indexedLosingTriplets [5][5][][][]int
+var indexedWinningQuads [5][5][][][]int
 
 func main() {
 
-	human_first_ptr := flag.Bool("H", true, "Human takes first move")
-	computer_first_ptr := flag.Bool("C", false, "Computer takes first move")
-	max_depth_ptr := flag.Int("d", 10, "maximum lookahead depth")
+	humanFirstPtr := flag.Bool("H", true, "Human takes first move")
+	computerFirstPtr := flag.Bool("C", false, "Computer takes first move")
+	maxDepthPtr := flag.Int("d", 10, "maximum lookahead depth")
 	flag.Parse()
 
 	// Set up for use by staticValue()
-	for _, triplet := range losing_triplets {
+	for _, triplet := range losingTriplets {
 		for _, pair := range triplet {
-			indexed_losing_triplets[pair[0]][pair[1]] = append(indexed_losing_triplets[pair[0]][pair[1]], triplet)
+			indexedLosingTriplets[pair[0]][pair[1]] = append(indexedLosingTriplets[pair[0]][pair[1]], triplet)
 		}
 	}
-	for _, quad := range winning_quads {
+	for _, quad := range winningQuads {
 		for _, pair := range quad {
-			indexed_winning_quads[pair[0]][pair[1]] = append(
-				indexed_winning_quads[pair[0]][pair[1]], quad)
+			indexedWinningQuads[pair[0]][pair[1]] = append(
+				indexedWinningQuads[pair[0]][pair[1]], quad)
 		}
 	}
 
-	var human_first bool = *human_first_ptr
-	if *computer_first_ptr {
-		human_first = false
+	var humanFirst bool = *humanFirstPtr
+	if *computerFirstPtr {
+		humanFirst = false
 	}
-	max_depth = *max_depth_ptr
+	maxDepth = *maxDepthPtr
 
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	var bd Board
-	var end_of_game bool = false
+	var endOfGame bool = false
 
-	move_counter := 0
+	moveCounter := 0
 
-	for !end_of_game {
+	for !endOfGame {
 
 		var l, m int
-		if human_first {
+		if humanFirst {
 			l, m = readMove(&bd)
 			bd[l][m] = -1
-			end_of_game, _ = staticValue(&bd, 0, -1, l, m)
-			move_counter++
+			endOfGame, _ = staticValue(&bd, 0, -1, l, m)
+			moveCounter++
 		}
 
-		if end_of_game {
+		if endOfGame {
 			break
 		}
 
-		human_first = true
+		humanFirst = true
 
 		var moves [25][2]int
 		var next int = 0
 
 		max := LOSS
 
-		if move_counter < 4 {
-			max_depth = 6
+		if moveCounter < 4 {
+			maxDepth = 6
 		}
-		if move_counter > 3 {
-			max_depth = 8
+		if moveCounter > 3 {
+			maxDepth = 8
 		}
-		if move_counter > 10 {
-			max_depth = *max_depth_ptr
+		if moveCounter > 10 {
+			maxDepth = *maxDepthPtr
 		}
 
 		for i, row := range bd {
@@ -111,15 +109,15 @@ func main() {
 		fmt.Printf("My move: %d %d (%d, %d, %d)\n", moves[r][0], moves[r][1], max, next, r)
 
 		bd[moves[r][0]][moves[r][1]] = 1
-		move_counter++
+		moveCounter++
 
 		printBoard(&bd)
 
-		end_of_game, _ = staticValue(&bd, 0, 1, moves[r][0], moves[r][1])
+		endOfGame, _ = staticValue(&bd, 0, 1, moves[r][0], moves[r][1])
 	}
 
 	var phrase string
-	switch findWinnder(&bd) {
+	switch findWinner(&bd) {
 	case 1:
 		phrase = "\nX wins\n"
 	case 0:
@@ -134,8 +132,8 @@ func main() {
 	os.Exit(0)
 }
 
-func findWinnder(bd *Board) int {
-	for _, quad := range winning_quads {
+func findWinner(bd *Board) int {
+	for _, quad := range winningQuads {
 		sum := bd[quad[0][0]][quad[0][1]]
 		sum += bd[quad[1][0]][quad[1][1]]
 		sum += bd[quad[2][0]][quad[2][1]]
@@ -146,7 +144,7 @@ func findWinnder(bd *Board) int {
 		}
 	}
 
-	for _, triplet := range losing_triplets {
+	for _, triplet := range losingTriplets {
 		sum := bd[triplet[0][0]][triplet[0][1]]
 		sum += bd[triplet[1][0]][triplet[1][1]]
 		sum += bd[triplet[2][0]][triplet[2][1]]
@@ -165,16 +163,16 @@ func findWinnder(bd *Board) int {
 // only need to check these 9 cells to check
 // all the losing 3-in-a-row combos. You don't
 // have to look at each and every cell.
-var checkable_cells [9][2]int = [9][2]int{
+var checkableCells [9][2]int = [9][2]int{
 	{0, 2}, {1, 2}, {2, 0},
 	{2, 1}, {2, 2}, {2, 3},
 	{2, 4}, {3, 2}, {4, 2},
 }
 
-func staticValue(bd *Board, ply int, player int, x, y int) (stop_recursing bool, value int) {
+func staticValue(bd *Board, ply int, player int, x, y int) (stopRecursing bool, value int) {
 
-	relevant_quads := indexed_winning_quads[x][y]
-	for _, quad := range relevant_quads {
+	relevantQuads := indexedWinningQuads[x][y]
+	for _, quad := range relevantQuads {
 		sum := bd[quad[0][0]][quad[0][1]]
 		sum += bd[quad[1][0]][quad[1][1]]
 		sum += bd[quad[2][0]][quad[2][1]]
@@ -185,8 +183,8 @@ func staticValue(bd *Board, ply int, player int, x, y int) (stop_recursing bool,
 		}
 	}
 
-	relevant_triplets := indexed_losing_triplets[x][y]
-	for _, triplet := range relevant_triplets {
+	relevantTriplets := indexedLosingTriplets[x][y]
+	for _, triplet := range relevantTriplets {
 		sum := bd[triplet[0][0]][triplet[0][1]]
 		sum += bd[triplet[1][0]][triplet[1][1]]
 		sum += bd[triplet[2][0]][triplet[2][1]]
@@ -196,11 +194,11 @@ func staticValue(bd *Board, ply int, player int, x, y int) (stop_recursing bool,
 		}
 	}
 
-	if ply == max_depth {
+	if ply == maxDepth {
 
-		for _, cell := range checkable_cells {
-			relevant_quads := indexed_winning_quads[cell[0]][cell[1]]
-			for _, quad := range relevant_quads {
+		for _, cell := range checkableCells {
+			relevantQuads := indexedWinningQuads[cell[0]][cell[1]]
+			for _, quad := range relevantQuads {
 				sum := bd[quad[0][0]][quad[0][1]]
 				sum += bd[quad[1][0]][quad[1][1]]
 				sum += bd[quad[2][0]][quad[2][1]]
@@ -212,9 +210,9 @@ func staticValue(bd *Board, ply int, player int, x, y int) (stop_recursing bool,
 		}
 
 		// Try to stay out of 2-of-losing-3 triplets
-		for _, cell := range checkable_cells {
-			relevant_triplets := indexed_losing_triplets[cell[0]][cell[1]]
-			for _, triplet := range relevant_triplets {
+		for _, cell := range checkableCells {
+			relevantTriplets := indexedLosingTriplets[cell[0]][cell[1]]
+			for _, triplet := range relevantTriplets {
 				sum := bd[triplet[0][0]][triplet[0][1]]
 				sum += bd[triplet[1][0]][triplet[1][1]]
 				sum += bd[triplet[2][0]][triplet[2][1]]
@@ -253,9 +251,9 @@ func staticValue(bd *Board, ply int, player int, x, y int) (stop_recursing bool,
 
 func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int) (value int) {
 
-	stop_recursing, score := staticValue(bd, ply, player, x, y)
+	stopRecursing, score := staticValue(bd, ply, player, x, y)
 
-	if stop_recursing {
+	if stopRecursing {
 		return score
 	}
 
@@ -325,7 +323,7 @@ func printBoard(bd *Board) {
 	}
 }
 
-var losing_triplets [][][]int = [][][]int{
+var losingTriplets [][][]int = [][][]int{
 	[][]int{[]int{0, 0}, []int{1, 0}, []int{2, 0}},
 	[][]int{[]int{0, 0}, []int{0, 1}, []int{0, 2}},
 	[][]int{[]int{0, 0}, []int{1, 1}, []int{2, 2}},
@@ -375,7 +373,7 @@ var losing_triplets [][][]int = [][][]int{
 	[][]int{[]int{1, 4}, []int{2, 4}, []int{3, 4}},
 	[][]int{[]int{2, 4}, []int{3, 4}, []int{4, 4}},
 }
-var winning_quads [][][]int = [][][]int{
+var winningQuads [][][]int = [][][]int{
 	[][]int{[]int{0, 0}, []int{1, 0}, []int{2, 0}, []int{3, 0}},
 	[][]int{[]int{0, 0}, []int{0, 1}, []int{0, 2}, []int{0, 3}},
 	[][]int{[]int{0, 0}, []int{1, 1}, []int{2, 2}, []int{3, 3}},
@@ -415,7 +413,8 @@ var scores [][]int = [][]int{
 }
 
 func readMove(bd *Board) (x, y int) {
-	for {
+	readMove := false
+	for !readMove {
 		fmt.Printf("Your move: ")
 		_, err := fmt.Scanf("%d %d\n", &x, &y)
 		if err == io.EOF {
@@ -429,7 +428,7 @@ func readMove(bd *Board) (x, y int) {
 		case x < 0 || x > 4 || y < 0 || y > 4:
 			fmt.Printf("Choose two numbers between 0 and 4, try again\n")
 		case bd[x][y] == 0:
-			break
+			readMove = true
 		case bd[x][y] != 0:
 			fmt.Printf("Cell (%d, %d) already occupied, try again\n", x, y)
 		}
