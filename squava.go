@@ -31,7 +31,7 @@ func main() {
 	max_depth_ptr := flag.Int("d", 10, "maximum lookahead depth")
 	flag.Parse()
 
-	// Set up for use by static_value()
+	// Set up for use by staticValue()
 	for _, triplet := range losing_triplets {
 		for _, pair := range triplet {
 			indexed_losing_triplets[pair[0]][pair[1]] = append(indexed_losing_triplets[pair[0]][pair[1]], triplet)
@@ -61,9 +61,9 @@ func main() {
 
 		var l, m int
 		if human_first {
-			l, m = read_move(&bd)
+			l, m = readMove(&bd)
 			bd[l][m] = -1
-			end_of_game, _ = static_value(&bd, 0, -1, l, m)
+			end_of_game, _ = staticValue(&bd, 0, -1, l, m)
 			move_counter++
 		}
 
@@ -92,7 +92,7 @@ func main() {
 			for j, mark := range row {
 				if mark == 0 {
 					bd[i][j] = 1
-					val := alphabeta(&bd, 1, -1, LOSS, WIN, i, j)
+					val := alphaBeta(&bd, 1, -1, LOSS, WIN, i, j)
 					bd[i][j] = 0
 					if val >= max {
 						if val > max {
@@ -113,13 +113,13 @@ func main() {
 		bd[moves[r][0]][moves[r][1]] = 1
 		move_counter++
 
-		print_board(&bd)
+		printBoard(&bd)
 
-		end_of_game, _ = static_value(&bd, 0, 1, moves[r][0], moves[r][1])
+		end_of_game, _ = staticValue(&bd, 0, 1, moves[r][0], moves[r][1])
 	}
 
 	var phrase string
-	switch find_winner(&bd) {
+	switch findWinnder(&bd) {
 	case 1:
 		phrase = "\nX wins\n"
 	case 0:
@@ -129,12 +129,12 @@ func main() {
 	}
 	fmt.Printf(phrase)
 
-	print_board(&bd)
+	printBoard(&bd)
 
 	os.Exit(0)
 }
 
-func find_winner(bd *Board) int {
+func findWinnder(bd *Board) int {
 	for _, quad := range winning_quads {
 		sum := bd[quad[0][0]][quad[0][1]]
 		sum += bd[quad[1][0]][quad[1][1]]
@@ -171,7 +171,7 @@ var checkable_cells [9][2]int = [9][2]int{
 	{2, 4}, {3, 2}, {4, 2},
 }
 
-func static_value(bd *Board, ply int, player int, x, y int) (stop_recursing bool, value int) {
+func staticValue(bd *Board, ply int, player int, x, y int) (stop_recursing bool, value int) {
 
 	relevant_quads := indexed_winning_quads[x][y]
 	for _, quad := range relevant_quads {
@@ -251,9 +251,9 @@ func static_value(bd *Board, ply int, player int, x, y int) (stop_recursing bool
 	return true, 0
 }
 
-func alphabeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int) (value int) {
+func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int) (value int) {
 
-	stop_recursing, score := static_value(bd, ply, player, x, y)
+	stop_recursing, score := staticValue(bd, ply, player, x, y)
 
 	if stop_recursing {
 		return score
@@ -266,7 +266,7 @@ func alphabeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 			for j, marker := range row {
 				if marker == 0 {
 					bd[i][j] = player
-					n := alphabeta(bd, ply+1, -player, alpha, beta, i, j)
+					n := alphaBeta(bd, ply+1, -player, alpha, beta, i, j)
 					bd[i][j] = 0
 					if n > value {
 						value = n
@@ -286,7 +286,7 @@ func alphabeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 			for j, marker := range row {
 				if marker == 0 {
 					bd[i][j] = player
-					n := alphabeta(bd, ply+1, -player, alpha, beta, i, j)
+					n := alphaBeta(bd, ply+1, -player, alpha, beta, i, j)
 					bd[i][j] = 0
 					if n < value {
 						value = n
@@ -305,7 +305,7 @@ func alphabeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 	return value
 }
 
-func print_board(bd *Board) {
+func printBoard(bd *Board) {
 	fmt.Printf("   0 1 2 3 4\n")
 	for i, row := range bd {
 		fmt.Printf("%d  ", i)
@@ -414,7 +414,7 @@ var scores [][]int = [][]int{
 	[]int{3, 3, 0, 3, 3},
 }
 
-func read_move(bd *Board) (x, y int) {
+func readMove(bd *Board) (x, y int) {
 	for {
 		fmt.Printf("Your move: ")
 		_, err := fmt.Scanf("%d %d\n", &x, &y)
