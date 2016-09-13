@@ -18,7 +18,7 @@ var maxDepth int = 10
 
 // Arrays of losing triplets and winning quads, indexed
 // by <x,y> coords of all pairs composing each of the quads
-// or triplets. Makes staticValue() a lot more efficient
+// or triplets. Makes deltaValue() a lot more efficient
 var indexedLosingTriplets [5][5][][][]int
 var indexedWinningQuads [5][5][][][]int
 
@@ -27,9 +27,10 @@ func main() {
 	humanFirstPtr := flag.Bool("H", true, "Human takes first move")
 	computerFirstPtr := flag.Bool("C", false, "Computer takes first move")
 	maxDepthPtr := flag.Int("d", 10, "maximum lookahead depth")
+	deterministicPtr := flag.Bool("D", false, "Play deterministically")
 	flag.Parse()
 
-	// Set up for use by staticValue()
+	// Set up for use by deltaValue()
 	for _, triplet := range losingTriplets {
 		for _, pair := range triplet {
 			indexedLosingTriplets[pair[0]][pair[1]] = append(indexedLosingTriplets[pair[0]][pair[1]], triplet)
@@ -61,7 +62,7 @@ func main() {
 		if humanFirst {
 			l, m = readMove(&bd)
 			bd[l][m] = -1
-			endOfGame, _ = staticValue(&bd, 0, -1, l, m)
+			endOfGame, _ = deltaValue(&bd, 0, l, m)
 			moveCounter++
 		}
 
@@ -86,11 +87,13 @@ func main() {
 			maxDepth = *maxDepthPtr
 		}
 
+		boardValue := wholeBoardValue(&bd)
+
 		for i, row := range bd {
 			for j, mark := range row {
 				if mark == 0 {
 					bd[i][j] = 1
-					val := alphaBeta(&bd, 1, -1, LOSS, WIN, i, j)
+					val := alphaBeta(&bd, 1, -1, LOSS, WIN, i, j, boardValue)
 					bd[i][j] = 0
 					if val >= max {
 						if val > max {
@@ -105,7 +108,16 @@ func main() {
 			}
 		}
 
-		r := rand.Intn(next)
+		if next == 0 {
+			// Loop over all 25 cells couldn't find any
+			// empty cells. Cat got the game.
+			break
+		}
+
+		r := 0
+		if !*deterministicPtr {
+			r = rand.Intn(next)
+		}
 		fmt.Printf("My move: %d %d (%d, %d, %d)\n", moves[r][0], moves[r][1], max, next, r)
 
 		bd[moves[r][0]][moves[r][1]] = 1
@@ -113,7 +125,7 @@ func main() {
 
 		printBoard(&bd)
 
-		endOfGame, _ = staticValue(&bd, 0, 1, moves[r][0], moves[r][1])
+		endOfGame, _ = deltaValue(&bd, 0, moves[r][0], moves[r][1])
 	}
 
 	var phrase string
@@ -169,7 +181,9 @@ var checkableCells [9][2]int = [9][2]int{
 	{2, 4}, {3, 2}, {4, 2},
 }
 
-func staticValue(bd *Board, ply int, player int, x, y int) (stopRecursing bool, value int) {
+// Calculates and returns the value of the move (x,y)
+// Only considers value gained or lost from the cell (x,y)
+func deltaValue(bd *Board, ply int, x, y int) (stopRecursing bool, value int) {
 
 	relevantQuads := indexedWinningQuads[x][y]
 	for _, quad := range relevantQuads {
@@ -194,67 +208,104 @@ func staticValue(bd *Board, ply int, player int, x, y int) (stopRecursing bool, 
 		}
 	}
 
-	if ply == maxDepth {
-
-		for _, cell := range checkableCells {
-			relevantQuads := indexedWinningQuads[cell[0]][cell[1]]
-			for _, quad := range relevantQuads {
-				sum := bd[quad[0][0]][quad[0][1]]
-				sum += bd[quad[1][0]][quad[1][1]]
-				sum += bd[quad[2][0]][quad[2][1]]
-				sum += bd[quad[3][0]][quad[3][1]]
-				if sum == 3 || sum == -3 {
-					value += sum * 10
-				}
-			}
-		}
-
-		// Try to stay out of 2-of-losing-3 triplets
-		for _, cell := range checkableCells {
-			relevantTriplets := indexedLosingTriplets[cell[0]][cell[1]]
-			for _, triplet := range relevantTriplets {
-				sum := bd[triplet[0][0]][triplet[0][1]]
-				sum += bd[triplet[1][0]][triplet[1][1]]
-				sum += bd[triplet[2][0]][triplet[2][1]]
-				if sum == 3 || sum == -3 {
-					value += sum * 5
-				}
-			}
-		}
-
-		if value == 0 {
-			// Bive it a slight bias for those early
-			// moves when all losing-triplets and winning-quads
-			// are beyond the horizon.
-			for i, row := range bd {
-				for j, _ := range row {
-					value += bd[i][j] * scores[i][j]
-				}
-			}
-		}
-
-		return true, value
-	}
-
-	// Not at max depth of search, but the whole board
-	// might be filled in.
-	for _, row := range bd {
-		for _, val := range row {
-			if val == 0 {
-				return false, 0
-			}
+	relevantQuads = indexedWinningQuads[x][y]
+	for _, quad := range relevantQuads {
+		sum := bd[quad[0][0]][quad[0][1]]
+		sum += bd[quad[1][0]][quad[1][1]]
+		sum += bd[quad[2][0]][quad[2][1]]
+		sum += bd[quad[3][0]][quad[3][1]]
+		if sum == 3 || sum == -3 {
+			value += sum * 10
 		}
 	}
-	// Get here, all 25 spots on board filled, no winning quadruplet
-	return true, 0
+
+	// Try to stay out of 2-of-losing-3 triplets.
+	// This isn't as good as it could be. Some 2-of-3-losing
+	// aren't as bad as others.
+	relevantTriplets = indexedLosingTriplets[x][y]
+	for _, triplet := range relevantTriplets {
+		sum := bd[triplet[0][0]][triplet[0][1]]
+		sum += bd[triplet[1][0]][triplet[1][1]]
+		sum += bd[triplet[2][0]][triplet[2][1]]
+		if sum == 2 || sum == -2 {
+			value += sum * 5
+		}
+	}
+
+	// Bive it a slight bias for those early
+	// moves when all losing-triplets and winning-quads
+	// are beyond the horizon.
+	value += bd[x][y] * scores[y][y]
+
+	// If squava has a "cat game", then this is wrong. Cat
+	// games could stop recursing here.
+	stopRecursing = false
+	if ply >= maxDepth {
+		stopRecursing = true
+	}
+
+	return stopRecursing, value
 }
 
-func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int) (value int) {
+// Calculates and returns the value of the entire board.
+// It only looks at the cells in checkableCells[], so it
+// doesn't double-count very many combos.
+func wholeBoardValue(bd *Board) (value int) {
 
-	stopRecursing, score := staticValue(bd, ply, player, x, y)
+	for _, cell := range checkableCells {
+		relevantQuads := indexedWinningQuads[cell[0]][cell[1]]
+		for _, quad := range relevantQuads {
+			sum := bd[quad[0][0]][quad[0][1]]
+			sum += bd[quad[1][0]][quad[1][1]]
+			sum += bd[quad[2][0]][quad[2][1]]
+			sum += bd[quad[3][0]][quad[3][1]]
+
+			if sum == 4 || sum == -4 {
+				return bd[quad[0][0]][quad[0][1]] * WIN
+			}
+
+			// Try to get into 3-of-winning-4 situtations
+			if sum == 3 || sum == -3 {
+				value += sum * 10
+			}
+		}
+
+		relevantTriplets := indexedLosingTriplets[cell[0]][cell[1]]
+		for _, triplet := range relevantTriplets {
+			sum := bd[triplet[0][0]][triplet[0][1]]
+			sum += bd[triplet[1][0]][triplet[1][1]]
+			sum += bd[triplet[2][0]][triplet[2][1]]
+
+			if sum == 3 || sum == -3 {
+				return -bd[triplet[0][0]][triplet[0][1]] * WIN
+			}
+
+			// Try to stay out of 2-of-losing-3 triplets
+			if sum == 2 || sum == -2 {
+				value += sum * 5
+			}
+		}
+	}
+
+	// Give it a slight bias for those early
+	// moves when all losing-triplets and winning-quads
+	// are beyond the horizon.
+	for i, row := range bd {
+		for j, _ := range row {
+			value += bd[i][j] * scores[i][j]
+		}
+	}
+	return value
+}
+
+func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int, boardValue int) (value int) {
+
+	stopRecursing, delta := deltaValue(bd, ply, x, y)
+
+	boardValue += delta
 
 	if stopRecursing {
-		return score
+		return boardValue
 	}
 
 	switch player {
@@ -264,7 +315,7 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 			for j, marker := range row {
 				if marker == 0 {
 					bd[i][j] = player
-					n := alphaBeta(bd, ply+1, -player, alpha, beta, i, j)
+					n := alphaBeta(bd, ply+1, -player, alpha, beta, i, j, boardValue)
 					bd[i][j] = 0
 					if n > value {
 						value = n
@@ -284,7 +335,7 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 			for j, marker := range row {
 				if marker == 0 {
 					bd[i][j] = player
-					n := alphaBeta(bd, ply+1, -player, alpha, beta, i, j)
+					n := alphaBeta(bd, ply+1, -player, alpha, beta, i, j, boardValue)
 					bd[i][j] = 0
 					if n < value {
 						value = n
