@@ -14,7 +14,7 @@ type Board [5][5]int
 const WIN = 10000
 const LOSS = -10000
 
-var maxDepth int = 10
+var maxDepth int = 9
 
 // Arrays of losing triplets and winning quads, indexed
 // by <x,y> coords of all pairs composing each of the quads
@@ -78,10 +78,10 @@ func main() {
 		max := LOSS
 
 		if moveCounter < 4 {
-			maxDepth = 6
+			maxDepth = 7
 		}
 		if moveCounter > 3 {
-			maxDepth = 8
+			maxDepth = 9
 		}
 		if moveCounter > 10 {
 			maxDepth = *maxDepthPtr
@@ -195,6 +195,9 @@ func deltaValue(bd *Board, ply int, x, y int) (stopRecursing bool, value int) {
 		if sum == 4 || sum == -4 {
 			return true, bd[quad[0][0]][quad[0][1]] * (WIN - ply)
 		}
+		if sum == 3 || sum == -3 {
+			value += sum * 10
+		}
 	}
 
 	relevantTriplets := indexedLosingTriplets[x][y]
@@ -204,35 +207,11 @@ func deltaValue(bd *Board, ply int, x, y int) (stopRecursing bool, value int) {
 		sum += bd[triplet[2][0]][triplet[2][1]]
 
 		if sum == 3 || sum == -3 {
-			return true, -bd[triplet[0][0]][triplet[0][1]] * (WIN - ply)
+			return true, -sum/3 * (WIN - ply)
 		}
 	}
 
-	relevantQuads = indexedWinningQuads[x][y]
-	for _, quad := range relevantQuads {
-		sum := bd[quad[0][0]][quad[0][1]]
-		sum += bd[quad[1][0]][quad[1][1]]
-		sum += bd[quad[2][0]][quad[2][1]]
-		sum += bd[quad[3][0]][quad[3][1]]
-		if sum == 3 || sum == -3 {
-			value += sum * 10
-		}
-	}
-
-	// Try to stay out of 2-of-losing-3 triplets.
-	// This isn't as good as it could be. Some 2-of-3-losing
-	// aren't as bad as others.
-	relevantTriplets = indexedLosingTriplets[x][y]
-	for _, triplet := range relevantTriplets {
-		sum := bd[triplet[0][0]][triplet[0][1]]
-		sum += bd[triplet[1][0]][triplet[1][1]]
-		sum += bd[triplet[2][0]][triplet[2][1]]
-		if sum == 2 || sum == -2 {
-			value += sum * 5
-		}
-	}
-
-	// Bive it a slight bias for those early
+	// Give it a slight bias for those early
 	// moves when all losing-triplets and winning-quads
 	// are beyond the horizon.
 	value += bd[x][y] * scores[y][y]
@@ -264,6 +243,8 @@ func wholeBoardValue(bd *Board) (value int) {
 				return bd[quad[0][0]][quad[0][1]] * WIN
 			}
 
+			// Avoid 2 loops over checkableCells[] in the case of
+			// no 4-in-a-row wins
 			// Try to get into 3-of-winning-4 situtations
 			if sum == 3 || sum == -3 {
 				value += sum * 10
@@ -277,12 +258,7 @@ func wholeBoardValue(bd *Board) (value int) {
 			sum += bd[triplet[2][0]][triplet[2][1]]
 
 			if sum == 3 || sum == -3 {
-				return -bd[triplet[0][0]][triplet[0][1]] * WIN
-			}
-
-			// Try to stay out of 2-of-losing-3 triplets
-			if sum == 2 || sum == -2 {
-				value += sum * 5
+				return -sum/3 * WIN
 			}
 		}
 	}
