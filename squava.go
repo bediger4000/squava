@@ -13,6 +13,9 @@ type Board [5][5]int
 
 const WIN = 10000
 const LOSS = -10000
+const MAXIMIZER = 1
+const MINIMIZER = -1
+const UNSET = 0
 
 var maxDepth int = 9
 
@@ -61,7 +64,7 @@ func main() {
 		var l, m int
 		if humanFirst {
 			l, m = readMove(&bd)
-			bd[l][m] = -1
+			bd[l][m] = MINIMIZER
 			endOfGame, _ = deltaValue(&bd, 0, l, m)
 			moveCounter++
 		}
@@ -73,7 +76,7 @@ func main() {
 		humanFirst = true
 
 		var moves [25][2]int
-		var next int = 0
+		var next int
 
 		max := LOSS
 
@@ -91,10 +94,10 @@ func main() {
 
 		for i, row := range bd {
 			for j, mark := range row {
-				if mark == 0 {
-					bd[i][j] = 1
-					val := alphaBeta(&bd, 1, -1, LOSS, WIN, i, j, boardValue)
-					bd[i][j] = 0
+				if mark == UNSET {
+					bd[i][j] = MAXIMIZER
+					val := alphaBeta(&bd, 1, MINIMIZER, LOSS, WIN, i, j, boardValue)
+					bd[i][j] = UNSET
 					if val >= max {
 						if val > max {
 							max = val
@@ -120,7 +123,7 @@ func main() {
 		}
 		fmt.Printf("My move: %d %d (%d, %d, %d)\n", moves[r][0], moves[r][1], max, next, r)
 
-		bd[moves[r][0]][moves[r][1]] = 1
+		bd[moves[r][0]][moves[r][1]] = MAXIMIZER
 		moveCounter++
 
 		printBoard(&bd)
@@ -130,11 +133,11 @@ func main() {
 
 	var phrase string
 	switch findWinner(&bd) {
-	case 1:
+	case MAXIMIZER:
 		phrase = "\nX wins\n"
-	case 0:
+	case UNSET:
 		phrase = "\nCat wins\n"
-	case -1:
+	case MINIMIZER:
 		phrase = "\nO wins\n"
 	}
 	fmt.Printf(phrase)
@@ -207,7 +210,7 @@ func deltaValue(bd *Board, ply int, x, y int) (stopRecursing bool, value int) {
 		sum += bd[triplet[2][0]][triplet[2][1]]
 
 		if sum == 3 || sum == -3 {
-			return true, -sum/3 * (WIN - ply)
+			return true, -sum / 3 * (WIN - ply)
 		}
 	}
 
@@ -258,7 +261,7 @@ func wholeBoardValue(bd *Board) (value int) {
 			sum += bd[triplet[2][0]][triplet[2][1]]
 
 			if sum == 3 || sum == -3 {
-				return -sum/3 * WIN
+				return -sum / 3 * WIN
 			}
 		}
 	}
@@ -285,14 +288,14 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 	}
 
 	switch player {
-	case 1:
+	case MAXIMIZER:
 		value = LOSS
 		for i, row := range bd {
 			for j, marker := range row {
-				if marker == 0 {
-					bd[i][j] = player
-					n := alphaBeta(bd, ply+1, -player, alpha, beta, i, j, boardValue)
-					bd[i][j] = 0
+				if marker == UNSET {
+					bd[i][j] = MAXIMIZER
+					n := alphaBeta(bd, ply+1, MINIMIZER, alpha, beta, i, j, boardValue)
+					bd[i][j] = UNSET
 					if n > value {
 						value = n
 					}
@@ -305,14 +308,14 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 				}
 			}
 		}
-	case -1:
+	case MINIMIZER:
 		value = WIN
 		for i, row := range bd {
 			for j, marker := range row {
-				if marker == 0 {
+				if marker == UNSET {
 					bd[i][j] = player
 					n := alphaBeta(bd, ply+1, -player, alpha, beta, i, j, boardValue)
-					bd[i][j] = 0
+					bd[i][j] = UNSET
 					if n < value {
 						value = n
 					}
@@ -337,11 +340,11 @@ func printBoard(bd *Board) {
 		for _, v := range row {
 			var marker string
 			switch v {
-			case 1:
+			case MAXIMIZER:
 				marker = "X"
-			case -1:
+			case MINIMIZER:
 				marker = "O"
-			case 0:
+			case UNSET:
 				marker = "_"
 			}
 			fmt.Printf("%s ", marker)
