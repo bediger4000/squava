@@ -1,3 +1,16 @@
+// Calculate the value for first moves
+// Only does 6 actual first moves:
+//     0 1 2 3 4
+//    0  . . . _ _ 
+//    1  _ . . _ _ 
+//    2  _ _ . _ _ 
+//    3  _ _ _ _ _ 
+//    4  _ _ _ _ _ 
+//
+// <0,0>, <0,1>, <0,2>, <1,1>, <1,2> and <2,2>
+// Every other first move is a reflection or rotation of
+// the board away from those 6.
+
 package main
 
 import (
@@ -11,21 +24,25 @@ type Board [5][5]int
 
 const WIN = 10000
 const LOSS = -10000
-
-var maxDepth int = 10
+const MAXIMIZER = 1
+const MINIMIZER = -1
+const UNSET = 0
 
 // Arrays of losing triplets and winning quads, indexed
 // by <x,y> coords of all pairs composing each of the quads
-// or triplets. Makes deltaValue() a lot more efficient
+// or triplets. Makes alphaBeta() a lot more efficient
 var indexedLosingTriplets [5][5][][][]int
 var indexedWinningQuads [5][5][][][]int
 
+var maxDepth int
+var leafNodes int
+
 func main() {
 
-	maxDepthPtr := flag.Int("d", 10, "maximum lookahead depth")
+	maxDepthPtr := flag.Int("d", 9, "maximum lookahead depth")
 	flag.Parse()
 
-	// Set up for use by deltaValue()
+	// Set up for use by value-calculation section of alphaBeta()
 	for _, triplet := range losingTriplets {
 		for _, pair := range triplet {
 			indexedLosingTriplets[pair[0]][pair[1]] = append(indexedLosingTriplets[pair[0]][pair[1]], triplet)
@@ -44,12 +61,13 @@ func main() {
 
 	for _, cell := range uniqueCells {
 		i, j := cell[0], cell[1]
-		bd[i][j] = 1
+		bd[i][j] = MAXIMIZER
+		leafNodes = 0
 		before := time.Now()
-		val := alphaBeta(&bd, 1, -1, LOSS, WIN, i, j, 0)
+		val := alphaBeta(&bd, 1, MINIMIZER, LOSS, WIN, i, j, 0)
 		after := time.Now()
-		bd[i][j] = 0
-		fmt.Printf("<%d,%d>\t%d\t%v\n", i, j, val, after.Sub(before))
+		bd[i][j] = UNSET
+		fmt.Printf("<%d,%d>\t%d (%d) [%d]\t%v\n", i, j, val, scores[i][j], leafNodes, after.Sub(before))
 	}
 
 	os.Exit(0)
@@ -67,7 +85,10 @@ var checkableCells [9][2]int = [9][2]int{
 	{2, 4}, {3, 2}, {4, 2},
 }
 
-func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int, boardValue int) (value int) {
+// nextPlayer makes move in this invocation.
+// previous player (-nextPlayer) just made the move <x,y>,
+// bd has value boardValue not including that move.
+func alphaBeta(bd *Board, ply int, nextPlayer int, alpha int, beta int, x int, y int, boardValue int) (value int) {
 
 	relevantQuads := indexedWinningQuads[x][y]
 	delta := 0
@@ -78,6 +99,7 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 		sum += bd[quad[3][0]][quad[3][1]]
 
 		if sum == 4 || sum == -4 {
+			leafNodes++
 			return bd[quad[0][0]][quad[0][1]] * (WIN - ply)
 		}
 		if sum == 3 || sum == -3 {
@@ -92,33 +114,30 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 		sum += bd[triplet[2][0]][triplet[2][1]]
 
 		if sum == 3 || sum == -3 {
-			return -sum/3 * (WIN - ply)
+			leafNodes++
+			return -sum / 3 * (WIN - ply)
 		}
-/*
-		if sum == 2 || sum == -2 {
-			delta += sum * 5
-		}
-*/
 	}
 
-	delta += bd[x][y] * scores[y][y]
+	delta += bd[x][y] * scores[x][y]
 
 	boardValue += delta
 
-	if ply >= maxDepth {
+	if ply == maxDepth {
+		leafNodes++
 		return boardValue
 	}
 
-	switch player {
-	case 1:
+	switch nextPlayer {
+	case MAXIMIZER:
 		value = LOSS
 		for _, cell := range orderedCells {
 			i, j := cell[0], cell[1]
 			marker := bd[i][j]
-			if marker == 0 {
-				bd[i][j] = player
-				n := alphaBeta(bd, ply+1, -player, alpha, beta, i, j, boardValue)
-				bd[i][j] = 0
+			if marker == UNSET {
+				bd[i][j] = MAXIMIZER
+				n := alphaBeta(bd, ply+1, MINIMIZER, alpha, beta, i, j, boardValue)
+				bd[i][j] = UNSET
 				if n > value {
 					value = n
 				}
@@ -126,19 +145,21 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 					alpha = value
 				}
 				if beta <= alpha {
-					return value
+					break
 				}
 			}
 		}
-	case -1:
+		leafNodes++
+		return value
+	case MINIMIZER:
 		value = WIN
 		for _, cell := range orderedCells {
 			i, j := cell[0], cell[1]
 			marker := bd[i][j]
-			if marker == 0 {
-				bd[i][j] = player
-				n := alphaBeta(bd, ply+1, -player, alpha, beta, i, j, boardValue)
-				bd[i][j] = 0
+			if marker == UNSET {
+				bd[i][j] = MINIMIZER
+				n := alphaBeta(bd, ply+1, MAXIMIZER, alpha, beta, i, j, boardValue)
+				bd[i][j] = UNSET
 				if n < value {
 					value = n
 				}
@@ -146,12 +167,15 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 					beta = value
 				}
 				if beta <= alpha {
-					return value
+					break
 				}
 			}
 		}
+		leafNodes++
+		return value
 	}
 
+	leafNodes++
 	return value
 }
 
