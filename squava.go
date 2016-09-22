@@ -31,7 +31,10 @@ func main() {
 	computerFirstPtr := flag.Bool("C", false, "Computer takes first move")
 	maxDepthPtr := flag.Int("d", 9, "maximum lookahead depth")
 	deterministicPtr := flag.Bool("D", false, "Play deterministically")
+	printBoardPtr := flag.Bool("n", false, "Don't print board, just emit moves")
 	flag.Parse()
+
+	*printBoardPtr = !*printBoardPtr
 
 	// Set up for use by deltaValue()
 	for _, triplet := range losingTriplets {
@@ -63,7 +66,7 @@ func main() {
 
 		var l, m int
 		if humanFirst {
-			l, m = readMove(&bd)
+			l, m = readMove(&bd, *printBoardPtr)
 			bd[l][m] = MINIMIZER
 			endOfGame, _ = deltaValue(&bd, 0, l, m)
 			moveCounter++
@@ -121,28 +124,37 @@ func main() {
 		if !*deterministicPtr {
 			r = rand.Intn(next)
 		}
-		fmt.Printf("My move: %d %d (%d, %d, %d)\n", moves[r][0], moves[r][1], max, next, r)
+
+		if *printBoardPtr {
+			fmt.Printf("My move: %d %d (%d, %d, %d)\n", moves[r][0], moves[r][1], max, next, r)
+		}
 
 		bd[moves[r][0]][moves[r][1]] = MAXIMIZER
 		moveCounter++
 
-		printBoard(&bd)
+		if *printBoardPtr {
+			printBoard(&bd)
+		} else {
+			fmt.Printf("%d %d\n", moves[r][0], moves[r][1])
+		}
 
 		endOfGame, _ = deltaValue(&bd, 0, moves[r][0], moves[r][1])
 	}
 
-	var phrase string
-	switch findWinner(&bd) {
-	case MAXIMIZER:
-		phrase = "\nX wins\n"
-	case UNSET:
-		phrase = "\nCat wins\n"
-	case MINIMIZER:
-		phrase = "\nO wins\n"
-	}
-	fmt.Printf(phrase)
+	if *printBoardPtr {
+		var phrase string
+		switch findWinner(&bd) {
+		case MAXIMIZER:
+			phrase = "\nX wins\n"
+		case UNSET:
+			phrase = "\nCat wins\n"
+		case MINIMIZER:
+			phrase = "\nO wins\n"
+		}
+		fmt.Printf(phrase)
 
-	printBoard(&bd)
+		printBoard(&bd)
+	}
 
 	os.Exit(0)
 }
@@ -217,7 +229,7 @@ func deltaValue(bd *Board, ply int, x, y int) (stopRecursing bool, value int) {
 	// Give it a slight bias for those early
 	// moves when all losing-triplets and winning-quads
 	// are beyond the horizon.
-	value += bd[x][y] * scores[y][y]
+	value += bd[x][y] * scores[x][y]
 
 	// If squava has a "cat game", then this is wrong. Cat
 	// games could stop recursing here.
@@ -435,17 +447,19 @@ var winningQuads [][][]int = [][][]int{
 }
 
 var scores [][]int = [][]int{
-	[]int{3, 3, 0, 3, 3},
-	[]int{3, 4, 1, 4, 3},
-	[]int{0, 1, 0, 1, 2},
-	[]int{3, 4, 1, 4, 3},
-	[]int{3, 3, 0, 3, 3},
+	[]int{3, 6, 0, 6, 3},
+	[]int{6, 7, 3, 7, 6},
+	[]int{0, 3, 2, 3, 0},
+	[]int{6, 7, 3, 7, 6},
+	[]int{3, 6, 0, 6, 3},
 }
 
-func readMove(bd *Board) (x, y int) {
+func readMove(bd *Board, printStuff bool) (x, y int) {
 	readMove := false
 	for !readMove {
-		fmt.Printf("Your move: ")
+		if printStuff {
+			fmt.Printf("Your move: ")
+		}
 		_, err := fmt.Scanf("%d %d\n", &x, &y)
 		if err == io.EOF {
 			os.Exit(0)
@@ -456,11 +470,15 @@ func readMove(bd *Board) (x, y int) {
 		}
 		switch {
 		case x < 0 || x > 4 || y < 0 || y > 4:
-			fmt.Printf("Choose two numbers between 0 and 4, try again\n")
+			if printStuff {
+				fmt.Printf("Choose two numbers between 0 and 4, try again\n")
+			}
 		case bd[x][y] == 0:
 			readMove = true
 		case bd[x][y] != 0:
-			fmt.Printf("Cell (%d, %d) already occupied, try again\n", x, y)
+			if printStuff {
+				fmt.Printf("Cell (%d, %d) already occupied, try again\n", x, y)
+			}
 		}
 	}
 	return x, y
