@@ -447,11 +447,11 @@ var winningQuads [][][]int = [][][]int{
 }
 
 var scores [][]int = [][]int{
-	[]int{3, 6, 0, 6, 3},
-	[]int{6, 7, 3, 7, 6},
-	[]int{0, 3, 2, 3, 0},
-	[]int{6, 7, 3, 7, 6},
-	[]int{3, 6, 0, 6, 3},
+	[]int{3, 3, 0, 3, 3},
+	[]int{3, 4, 1, 4, 3},
+	[]int{0, 1, 0, 1, 0},
+	[]int{3, 4, 1, 4, 3},
+	[]int{3, 3, 0, 3, 3},
 }
 
 func readMove(bd *Board, printStuff bool) (x, y int) {
