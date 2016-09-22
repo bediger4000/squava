@@ -84,10 +84,10 @@ func main() {
 		max := LOSS
 
 		if moveCounter < 4 {
-			maxDepth = 7
+			maxDepth = 6
 		}
 		if moveCounter > 3 {
-			maxDepth = 9
+			maxDepth = 8 
 		}
 		if moveCounter > 10 {
 			maxDepth = *maxDepthPtr
@@ -125,14 +125,11 @@ func main() {
 			r = rand.Intn(next)
 		}
 
-		if *printBoardPtr {
-			fmt.Printf("My move: %d %d (%d, %d, %d)\n", moves[r][0], moves[r][1], max, next, r)
-		}
-
 		bd[moves[r][0]][moves[r][1]] = MAXIMIZER
 		moveCounter++
 
 		if *printBoardPtr {
+			fmt.Printf("My move: %d %d (%d, %d, %d)\n", moves[r][0], moves[r][1], max, next, r)
 			printBoard(&bd)
 		} else {
 			fmt.Printf("%d %d\n", moves[r][0], moves[r][1])
