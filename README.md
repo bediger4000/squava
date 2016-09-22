@@ -26,6 +26,7 @@ Command line, text interface.  `squava` (the program) command line options:
       -H    Human takes first move (default true)
       -d int
             maximum lookahead depth (default 9)
+      -n    Don't print board, just emit moves
 
 
 Alpha-Beta minimax, [algorithm](https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning)
@@ -59,12 +60,6 @@ minimaxing has its individual contribution to the board's score added when the p
 This avoids repeating for every leaf node of a game tree most of the calculations made by `squava` .
 I folded the static valuation of the board into the function `alphaBeta()` to avoid any function
 call overhead. Both changes sped up the programs.
-
-## JavaScript Program
-
-Point-n-click, runs in your browser. Single HTML file.
-
-JavaScript transliteration of an earlier version of the Golang version.
 
 ### Static Valuation Function
 
@@ -123,6 +118,13 @@ to avoid losing by being forced into 3-in-a-row.
 You can see the end game taking place by running two instances of `squava` in
 two `xterms`. Start one as `./squava -C`. It will chose a move first. Type
 that move into the second instance, which expects the "human" to move first.
+
+## JavaScript Program
+
+Point-n-click, runs in your browser. Single HTML file.
+
+JavaScript transliteration of an earlier version of the Golang version.
+
 
 ## References
 
