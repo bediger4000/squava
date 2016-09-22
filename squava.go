@@ -29,7 +29,7 @@ func main() {
 
 	humanFirstPtr := flag.Bool("H", true, "Human takes first move")
 	computerFirstPtr := flag.Bool("C", false, "Computer takes first move")
-	maxDepthPtr := flag.Int("d", 10, "maximum lookahead depth")
+	maxDepthPtr := flag.Int("d", 9, "maximum lookahead depth")
 	deterministicPtr := flag.Bool("D", false, "Play deterministically")
 	flag.Parse()
 
