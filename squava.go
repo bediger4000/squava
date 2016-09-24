@@ -29,7 +29,7 @@ func main() {
 
 	humanFirstPtr := flag.Bool("H", true, "Human takes first move")
 	computerFirstPtr := flag.Bool("C", false, "Computer takes first move")
-	maxDepthPtr := flag.Int("d", 9, "maximum lookahead depth")
+	maxDepthPtr := flag.Int("d", 10, "maximum lookahead depth")
 	deterministicPtr := flag.Bool("D", false, "Play deterministically")
 	printBoardPtr := flag.Bool("n", false, "Don't print board, just emit moves")
 	flag.Parse()
@@ -81,7 +81,7 @@ func main() {
 		var moves [25][2]int
 		var next int
 
-		max := LOSS
+		max := 2*LOSS  // A board can score less than LOSS
 
 		if moveCounter < 4 {
 			maxDepth = 6
@@ -298,7 +298,7 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 
 	switch player {
 	case MAXIMIZER:
-		value = LOSS
+		value = 2*LOSS // Possible to score less than LOSS
 		for i, row := range bd {
 			for j, marker := range row {
 				if marker == UNSET {
@@ -318,7 +318,7 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 			}
 		}
 	case MINIMIZER:
-		value = WIN
+		value = 2*WIN // You can score greater than WIN
 		for i, row := range bd {
 			for j, marker := range row {
 				if marker == UNSET {
