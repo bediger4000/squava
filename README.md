@@ -61,7 +61,7 @@ This avoids repeating for every leaf node of a game tree most of the calculation
 I folded the static valuation of the board into the function `alphaBeta()` to avoid any function
 call overhead. Both changes sped up the programs.
 
-![First move values](https://raw.githubusercontent.com/bediger4000/squava/1move.png)
+![First move values](https://raw.githubusercontent.com/bediger4000/squava/master/1move.png)
 
 ### Static Valuation Function
 
@@ -71,7 +71,7 @@ to the layout of X's and O's.
 The static value has a slight bias towards moves at the corners and edges of the
 board, and a slight bias towards winning (or forcing a loss) in as few moves as possible.
 
-![Slight bias](https://raw.githubusercontent.com/bediger4000/squava/staticval.png)
+![Slight bias](https://raw.githubusercontent.com/bediger4000/squava/master/staticval.png)
 
 After the slight biases, it gives larger magnitude scores for having
 a non-losing any 3 out of a winnning 4-in-a-row combination.
