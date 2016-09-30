@@ -62,6 +62,7 @@ I folded the static valuation of the board into the function `alphaBeta()` to av
 call overhead. Both changes sped up the programs.
 
 ![First move values](https://raw.githubusercontent.com/bediger4000/squava/master/1move.png)
+*First move values to first play, 14 ply lookahead*
 
 ### Static Valuation Function
 
@@ -72,6 +73,7 @@ The static value has a slight bias towards moves at the corners and edges of the
 board, and a slight bias towards winning (or forcing a loss) in as few moves as possible.
 
 ![Slight bias](https://raw.githubusercontent.com/bediger4000/squava/master/staticval.png)
+*Slight bias - reflect to get all cells' bias*
 
 After the slight biases, it gives larger magnitude scores for having
 a non-losing any 3 out of a winnning 4-in-a-row combination.
