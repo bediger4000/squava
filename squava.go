@@ -11,13 +11,15 @@ import (
 
 type Board [5][5]int
 
-const WIN = 10000
-const LOSS = -10000
-const MAXIMIZER = 1
-const MINIMIZER = -1
-const UNSET = 0
+const (
+	WIN       = 10000
+	LOSS      = -10000
+	MAXIMIZER = 1
+	MINIMIZER = -1
+	UNSET     = 0
+)
 
-var maxDepth int = 9
+var maxDepth int = 10 // initializing to 10 not a mistake
 
 // Arrays of losing triplets and winning quads, indexed
 // by <x,y> coords of all pairs composing each of the quads
@@ -34,7 +36,7 @@ func main() {
 	printBoardPtr := flag.Bool("n", false, "Don't print board, just emit moves")
 	flag.Parse()
 
-	*printBoardPtr = !*printBoardPtr
+	*printBoardPtr = !*printBoardPtr 
 
 	// Set up for use by deltaValue()
 	for _, triplet := range losingTriplets {
@@ -53,7 +55,6 @@ func main() {
 	if *computerFirstPtr {
 		humanFirst = false
 	}
-	maxDepth = *maxDepthPtr
 
 	rand.Seed(time.Now().UTC().UnixNano())
 
@@ -78,62 +79,25 @@ func main() {
 
 		humanFirst = true
 
-		var moves [25][2]int
-		var next int
+		setDepth(moveCounter, *maxDepthPtr)
 
-		max := 2 * LOSS // A board can score less than LOSS
+		a, b, score := chooseMove(&bd, *deterministicPtr)
 
-		if moveCounter < 4 {
-			maxDepth = 6
-		}
-		if moveCounter > 3 {
-			maxDepth = 8
-		}
-		if moveCounter > 10 {
-			maxDepth = *maxDepthPtr
+		if a < 0 {
+			break // Cat gets the game
 		}
 
-		for i, row := range bd {
-			for j, mark := range row {
-				if mark == UNSET {
-					bd[i][j] = MAXIMIZER
-					val := alphaBeta(&bd, 1, MINIMIZER, LOSS, WIN, i, j, 0)
-					bd[i][j] = UNSET
-					if val >= max {
-						if val > max {
-							max = val
-							next = 0
-						}
-						moves[next][0] = i
-						moves[next][1] = j
-						next++
-					}
-				}
-			}
-		}
-
-		if next == 0 {
-			// Loop over all 25 cells couldn't find any
-			// empty cells. Cat got the game.
-			break
-		}
-
-		r := 0
-		if !*deterministicPtr {
-			r = rand.Intn(next)
-		}
-
-		bd[moves[r][0]][moves[r][1]] = MAXIMIZER
+		bd[a][b] = MAXIMIZER
 		moveCounter++
 
 		if *printBoardPtr {
-			fmt.Printf("My move: %d %d (%d, %d, %d)\n", moves[r][0], moves[r][1], max, next, r)
+			fmt.Printf("My move: %d %d (%d)\n", a, b, score)
 			printBoard(&bd)
 		} else {
-			fmt.Printf("%d %d\n", moves[r][0], moves[r][1])
+			fmt.Printf("%d %d\n", a, b)
 		}
 
-		endOfGame, _ = deltaValue(&bd, 0, moves[r][0], moves[r][1])
+		endOfGame, _ = deltaValue(&bd, 0, a, b)
 	}
 
 	if *printBoardPtr {
@@ -152,6 +116,59 @@ func main() {
 	}
 
 	os.Exit(0)
+}
+
+func setDepth(moveCounter int, endGameDepth int) {
+	if moveCounter < 4 {
+		maxDepth = 6
+	}
+	if moveCounter > 3 {
+		maxDepth = 8
+	}
+	if moveCounter > 10 {
+		maxDepth = endGameDepth
+	}
+}
+
+// Choose computer's next move: return x,y coords of move and its score.
+func chooseMove(bd *Board, deterministic bool) (int, int, int) {
+
+	var moves [25][2]int
+	var next int
+
+	max := 2 * LOSS // A board can score less than LOSS
+
+	for i, row := range bd {
+		for j, mark := range row {
+			if mark == UNSET {
+				bd[i][j] = MAXIMIZER
+				val := alphaBeta(bd, 1, MINIMIZER, 2*LOSS, 2*WIN, i, j, 0)
+				bd[i][j] = UNSET
+				if val >= max {
+					if val > max {
+						max = val
+						next = 0
+					}
+					moves[next][0] = i
+					moves[next][1] = j
+					next++
+				}
+			}
+		}
+	}
+
+	if next == 0 {
+		// Loop over all 25 cells couldn't find any
+		// empty cells. Cat got the game.
+		return -1, -1, 0
+	}
+
+	r := 0
+	if !deterministic {
+		r = rand.Intn(next)
+	}
+
+	return moves[r][0], moves[r][1], max
 }
 
 func findWinner(bd *Board) int {
