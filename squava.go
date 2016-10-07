@@ -32,11 +32,13 @@ func main() {
 	humanFirstPtr := flag.Bool("H", true, "Human takes first move")
 	computerFirstPtr := flag.Bool("C", false, "Computer takes first move")
 	maxDepthPtr := flag.Int("d", 10, "maximum lookahead depth")
-	deterministicPtr := flag.Bool("D", false, "Play deterministically")
+	deterministic := flag.Bool("D", false, "Play deterministically")
 	printBoardPtr := flag.Bool("n", false, "Don't print board, just emit moves")
+	firstMovePtr := flag.String("M", "", "Tell computer to make this first move (x,y)")
+	randomizeScores := flag.Bool("r", false, "Randomize bias scores")
 	flag.Parse()
 
-	*printBoardPtr = !*printBoardPtr 
+	*printBoardPtr = !*printBoardPtr
 
 	// Set up for use by deltaValue()
 	for _, triplet := range losingTriplets {
@@ -50,6 +52,7 @@ func main() {
 				indexedWinningQuads[pair[0]][pair[1]], quad)
 		}
 	}
+	setScores(*randomizeScores)
 
 	var humanFirst bool = *humanFirstPtr
 	if *computerFirstPtr {
@@ -59,11 +62,22 @@ func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	var bd Board
+
+	if *firstMovePtr != "" {
+		var x1, y1 int
+		fmt.Sscanf(*firstMovePtr, "%d,%d", &x1, &y1)
+		fmt.Printf("My move: %d %d\n", x1, y1)
+		humanFirst = true
+		bd[x1][y1] = MAXIMIZER
+		printBoard(&bd)
+	}
+
 	var endOfGame bool = false
 
 	moveCounter := 0
 
 	for !endOfGame {
+		setDepth(moveCounter, *maxDepthPtr)
 
 		var l, m int
 		if humanFirst {
@@ -79,9 +93,7 @@ func main() {
 
 		humanFirst = true
 
-		setDepth(moveCounter, *maxDepthPtr)
-
-		a, b, score := chooseMove(&bd, *deterministicPtr)
+		a, b, score := chooseMove(&bd, *deterministic)
 
 		if a < 0 {
 			break // Cat gets the game
@@ -98,6 +110,7 @@ func main() {
 		}
 
 		endOfGame, _ = deltaValue(&bd, 0, a, b)
+
 	}
 
 	if *printBoardPtr {
@@ -410,18 +423,12 @@ var winningQuads [][][]int = [][][]int{
 	[][]int{[]int{4, 1}, []int{3, 2}, []int{2, 3}, []int{1, 4}},
 }
 
-var scores [][]int = [][]int{
-	[]int{3, 3, 0, 3, 3},
-	[]int{3, 4, 1, 4, 3},
-	[]int{0, 1, 0, 1, 0},
-	[]int{3, 4, 1, 4, 3},
-	[]int{3, 3, 0, 3, 3},
-}
+var scores [5][5]int
 
-func readMove(bd *Board, printStuff bool) (x, y int) {
+func readMove(bd *Board, print bool) (x, y int) {
 	readMove := false
 	for !readMove {
-		if printStuff {
+		if print {
 			fmt.Printf("Your move: ")
 		}
 		_, err := fmt.Scanf("%d %d\n", &x, &y)
@@ -434,16 +441,35 @@ func readMove(bd *Board, printStuff bool) (x, y int) {
 		}
 		switch {
 		case x < 0 || x > 4 || y < 0 || y > 4:
-			if printStuff {
+			if print {
 				fmt.Printf("Choose two numbers between 0 and 4, try again\n")
 			}
 		case bd[x][y] == 0:
 			readMove = true
 		case bd[x][y] != 0:
-			if printStuff {
+			if print {
 				fmt.Printf("Cell (%d, %d) already occupied, try again\n", x, y)
 			}
 		}
 	}
 	return x, y
+}
+
+func setScores(randomize bool) {
+	if randomize {
+		var vals [11]int = [11]int{-5, -4, -3 - 2, -1, 0, 1, 2, 3, 4, 5}
+		for i, row := range scores {
+			for j, _ := range row {
+				scores[i][j] = vals[rand.Intn(11)]
+			}
+		}
+	} else {
+		scores = [5][5]int{
+			[5]int{3, 3, 0, 3, 3},
+			[5]int{3, 4, 1, 4, 3},
+			[5]int{0, 1, 0, 1, 0},
+			[5]int{3, 4, 1, 4, 3},
+			[5]int{3, 3, 0, 3, 3},
+		}
+	}
 }
