@@ -24,9 +24,12 @@ Command line, text interface.  `squava` (the program) command line options:
       -C    Computer takes first move
       -D    Play deterministically
       -H    Human takes first move (default true)
+      -M string
+            Tell computer to make this first move (x,y)
       -d int
-            maximum lookahead depth (default 9)
+            maximum lookahead depth (default 10)
       -n    Don't print board, just emit moves
+      -r    Randomize bias scores
 
 
 Alpha-Beta minimax, [algorithm](https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning)
@@ -38,8 +41,9 @@ the same move in identical situations.
 The lookahead (number of moves ahead the code considers) varies during the game.
 If less than 8 marks appear on the board, it looks ahead 4 moves (2 moves each for both players).
 If less than 13 marks appear on the board, it looks ahead 3 moves for each player.
-If more than 12 marks appear, it looks ahead 4 moves for each player.
-This is something I set by trial and error. If the human plays right in the first few moves
+If more than 12 marks appear, it looks ahead 5 moves for each player.
+This is something I set by trial and error. I set the lookahead to as large
+a number as I could stand to wait for. If the human plays right in the first few moves
 when the program isn't looking too far ahead, the human can win.
 
 ### Book
@@ -54,13 +58,6 @@ or reflections of the board.
 `opening3` can perform very deep evaluations of all 6 first moves, and all unique (under rotation
 and reflection) response moves. This lets me check which response is best for each opening move.
 
-Both `opening2` and `opening3` have some ugly code changes relative to `squava` to speed things
-up. First, they calculate a board's numerical score progressively. Each move made during alpha-beta
-minimaxing has its individual contribution to the board's score added when the program considers it.
-This avoids repeating for every leaf node of a game tree most of the calculations made by `squava` .
-I folded the static valuation of the board into the function `alphaBeta()` to avoid any function
-call overhead. Both changes sped up the programs.
-
 ![First move values](https://raw.githubusercontent.com/bediger4000/squava/master/1move.png)
 
 *First move values to first player, 14 ply lookahead*
@@ -70,12 +67,16 @@ call overhead. Both changes sped up the programs.
 After reaching its lookahead depth (which varies throughout the game) the
 code does a static valuation of the board - it assigns a numerical value
 to the layout of X's and O's.
-The static value has a slight bias towards moves at the corners and edges of the
+By default, the static value has a slight bias towards moves at the corners of the
 board, and a slight bias towards winning (or forcing a loss) in as few moves as possible.
 
 ![Slight bias](https://raw.githubusercontent.com/bediger4000/squava/master/staticval.png)
 
-*Slight bias - reflect to get all cells' bias*
+*Default bias - reflect to get all cells' bias*
+
+Using the `-r` flag causes the program to give a random bias, from -5 to 5 for each
+cell. Using `-r` can cause the program to vary its opening moves, and give the human
+a small advantage.
 
 After the slight biases, it gives larger magnitude scores for having
 a non-losing any 3 out of a winnning 4-in-a-row combination.
@@ -87,6 +88,10 @@ human losing by 3-in-a-row.
 Experimentally, considering 2-of-loosing-3 does not make a difference in
 the program's play.  I think this is because every winning 4-in-a-row
 stems from a losing 3-in-a-row created two moves before.
+
+There are some configurations it should avoid, but doesn't. Two adjacent marks
+flanked by empty cells means that player cannot play either of the empty cells
+without losing. It should probably take this into account.
 
 Other than tic-tac-toe, where it's feasible to check the entire game tree
 on every move, this is the first static valuation function I've written
@@ -116,6 +121,18 @@ You can have the computer go first:
     3  _ _ _ _ _
     4  _ _ _ _ _
     Your move:
+
+You can force the computer to choose a particular opening move:
+
+    ./squava -M 1,1
+    My move: 1 1
+       0 1 2 3 4
+    0  _ _ _ _ _ 
+    1  _ X _ _ _ 
+    2  _ _ _ _ _ 
+    3  _ _ _ _ _ 
+    4  _ _ _ _ _ 
+
 
 I find that a typical game has two phases: opening, where there's up to 5
 pieces on the board.  A midgame, where you try to win by getting 4-in-a-row,
