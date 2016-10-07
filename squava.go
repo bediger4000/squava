@@ -81,25 +81,23 @@ func main() {
 		var moves [25][2]int
 		var next int
 
-		max := 2*LOSS  // A board can score less than LOSS
+		max := 2 * LOSS // A board can score less than LOSS
 
 		if moveCounter < 4 {
 			maxDepth = 6
 		}
 		if moveCounter > 3 {
-			maxDepth = 8 
+			maxDepth = 8
 		}
 		if moveCounter > 10 {
 			maxDepth = *maxDepthPtr
 		}
 
-		boardValue := wholeBoardValue(&bd)
-
 		for i, row := range bd {
 			for j, mark := range row {
 				if mark == UNSET {
 					bd[i][j] = MAXIMIZER
-					val := alphaBeta(&bd, 1, MINIMIZER, LOSS, WIN, i, j, boardValue)
+					val := alphaBeta(&bd, 1, MINIMIZER, LOSS, WIN, i, j, 0)
 					bd[i][j] = UNSET
 					if val >= max {
 						if val > max {
@@ -238,54 +236,6 @@ func deltaValue(bd *Board, ply int, x, y int) (stopRecursing bool, value int) {
 	return stopRecursing, value
 }
 
-// Calculates and returns the value of the entire board.
-// It only looks at the cells in checkableCells[], so it
-// doesn't double-count very many combos.
-func wholeBoardValue(bd *Board) (value int) {
-
-	for _, cell := range checkableCells {
-		relevantQuads := indexedWinningQuads[cell[0]][cell[1]]
-		for _, quad := range relevantQuads {
-			sum := bd[quad[0][0]][quad[0][1]]
-			sum += bd[quad[1][0]][quad[1][1]]
-			sum += bd[quad[2][0]][quad[2][1]]
-			sum += bd[quad[3][0]][quad[3][1]]
-
-			if sum == 4 || sum == -4 {
-				return bd[quad[0][0]][quad[0][1]] * WIN
-			}
-
-			// Avoid 2 loops over checkableCells[] in the case of
-			// no 4-in-a-row wins
-			// Try to get into 3-of-winning-4 situtations
-			if sum == 3 || sum == -3 {
-				value += sum * 10
-			}
-		}
-
-		relevantTriplets := indexedLosingTriplets[cell[0]][cell[1]]
-		for _, triplet := range relevantTriplets {
-			sum := bd[triplet[0][0]][triplet[0][1]]
-			sum += bd[triplet[1][0]][triplet[1][1]]
-			sum += bd[triplet[2][0]][triplet[2][1]]
-
-			if sum == 3 || sum == -3 {
-				return -sum / 3 * WIN
-			}
-		}
-	}
-
-	// Give it a slight bias for those early
-	// moves when all losing-triplets and winning-quads
-	// are beyond the horizon.
-	for i, row := range bd {
-		for j, _ := range row {
-			value += bd[i][j] * scores[i][j]
-		}
-	}
-	return value
-}
-
 func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int, boardValue int) (value int) {
 
 	stopRecursing, delta := deltaValue(bd, ply, x, y)
@@ -298,7 +248,7 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 
 	switch player {
 	case MAXIMIZER:
-		value = 2*LOSS // Possible to score less than LOSS
+		value = 2 * LOSS // Possible to score less than LOSS
 		for i, row := range bd {
 			for j, marker := range row {
 				if marker == UNSET {
@@ -318,7 +268,7 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 			}
 		}
 	case MINIMIZER:
-		value = 2*WIN // You can score greater than WIN
+		value = 2 * WIN // You can score greater than WIN
 		for i, row := range bd {
 			for j, marker := range row {
 				if marker == UNSET {
