@@ -62,6 +62,41 @@ and reflection) response moves. This lets me check which response is best for ea
 
 *First move values to first player, 14 ply lookahead*
 
+I think that the scores get assigned based on the lookahead finding situations like this:
+
+        0 1 2 3 4
+     0  _ _ _ _ _ 
+     1  _ O _ X O 
+     2  _ X X _ _ 
+     3  _ _ _ _ _ 
+     4  _ O _ _ _ 
+
+The human moved first (using 'O' marks), and moves went like this:
+
+1. 1,1
+2. 2,2
+3. 1,4
+4. 1,3
+5. 4,1
+6. 2,1
+
+That's a reasonably good opening. Depending on how 'X' plays, 'O' can
+have 3 possible 4-in-a-rows. In this particular game, the computer (playing 'X')
+predicts it will lose. The first 3 'X' moves put it in a situation where it can't
+move to (0,4), (3,1), (2,0), (0,4), (2,3) without getting 3-in-a-row and losing.
+
+A diagonal 4-in-a-row for 'O' exists between <4,1) and (1,4). 'X' cannot move to (2,3)
+without losing, so 'O' next move should be (3,2). 'X' next move is immaterial, and 'O'
+wins with (2,3).
+
+Counting symmetries, there's 16 triangles like 'O' made above, 4 for each corner of
+the board. All 3 vertices of the triangles end up on high-valued cells of the first
+move diagram above.
+
+You can counter your opponent in the early moves of a game to prevent formation of
+a triangle trap, but the computer's static evaluation function doesn't look far
+enough ahead to avoid a triangle.
+
 ### Static Valuation Function
 
 After reaching its lookahead depth (which varies throughout the game) the
