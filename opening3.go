@@ -28,7 +28,7 @@ var leafNodes int
 
 func main() {
 
-	maxDepthPtr := flag.Int("d", 9, "maximum lookahead depth")
+	maxDepthPtr := flag.Int("d", 10, "maximum lookahead depth")
 	flag.Parse()
 
 	// Set up for use by deltaValue()
@@ -175,7 +175,7 @@ func alphaBeta(bd *Board, ply int, nextPlayer int, alpha int, beta int, x int, y
 
 	switch nextPlayer {
 	case MAXIMIZER:
-		value = LOSS
+		value = 2*LOSS
 		for _, cell := range orderedCells {
 			i, j := cell[0], cell[1]
 			marker := bd[i][j]
@@ -197,7 +197,7 @@ func alphaBeta(bd *Board, ply int, nextPlayer int, alpha int, beta int, x int, y
 		leafNodes++
 		return value
 	case MINIMIZER:
-		value = WIN
+		value = 2*WIN
 		for _, cell := range orderedCells {
 			i, j := cell[0], cell[1]
 			marker := bd[i][j]
