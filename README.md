@@ -85,11 +85,11 @@ have 3 possible 4-in-a-rows. In this particular game, the computer (playing 'X')
 predicts it will lose. The first 3 'X' moves put it in a situation where it can't
 move to (0,4), (3,1), (2,0), (0,4), (2,3) without creating 3-in-a-row and losing.
 
-A diagonal 4-in-a-row for 'O' exists between <4,1) and (1,4). 'X' cannot move to (2,3)
+A diagonal 4-in-a-row for 'O' exists between (4,1) and (1,4). 'X' cannot move to (2,3)
 without losing. Next move for 'O' should be (3,2). 'X' next move is immaterial, and 'O'
 wins with (2,3).
 
-Counting symmetries, there's 16 triangles like 'O' made above, 4 for each corner of
+Counting reflections, there's 16 triangles like 'O' made above, 4 for each corner of
 the board. All 3 vertices of the triangles end up on high-valued cells of the first
 move diagram above.
 
