@@ -52,14 +52,15 @@ func main() {
 				indexedWinningQuads[pair[0]][pair[1]], quad)
 		}
 	}
+
+	rand.Seed(time.Now().UTC().UnixNano())
+
 	setScores(*randomizeScores)
 
 	var humanFirst bool = *humanFirstPtr
 	if *computerFirstPtr {
 		humanFirst = false
 	}
-
-	rand.Seed(time.Now().UTC().UnixNano())
 
 	var bd Board
 
