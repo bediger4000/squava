@@ -158,6 +158,7 @@ func chooseMove(bd *Board, deterministic bool) (int, int, int) {
 				bd[i][j] = MAXIMIZER
 				val := alphaBeta(bd, 1, MINIMIZER, 2*LOSS, 2*WIN, i, j, 0)
 				bd[i][j] = UNSET
+				fmt.Printf("	<%d,%d>  %d\n", i, j, val)
 				if val >= max {
 					if val > max {
 						max = val
@@ -269,13 +270,6 @@ func deltaValue(bd *Board, ply int, x, y int) (stopRecursing bool, value int) {
 
 func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int, boardValue int) (value int) {
 
-	stopRecursing, delta := deltaValue(bd, ply, x, y)
-
-	boardValue += delta
-
-	if stopRecursing {
-		return boardValue
-	}
 
 	switch player {
 	case MAXIMIZER:
@@ -284,6 +278,12 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 			for j, marker := range row {
 				if marker == UNSET {
 					bd[i][j] = MAXIMIZER
+					stopRecursing, delta := deltaValue(bd, ply, x, y)
+					boardValue += delta
+					if stopRecursing {
+						bd[i][j] = UNSET
+						return boardValue
+					}
 					n := alphaBeta(bd, ply+1, MINIMIZER, alpha, beta, i, j, boardValue)
 					bd[i][j] = UNSET
 					if n > value {
@@ -304,6 +304,12 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 			for j, marker := range row {
 				if marker == UNSET {
 					bd[i][j] = player
+					stopRecursing, delta := deltaValue(bd, ply, x, y)
+					boardValue += delta
+					if stopRecursing {
+						bd[i][j] = UNSET
+						return boardValue
+					}
 					n := alphaBeta(bd, ply+1, -player, alpha, beta, i, j, boardValue)
 					bd[i][j] = UNSET
 					if n < value {
