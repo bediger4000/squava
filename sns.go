@@ -145,6 +145,15 @@ func setDepth(moveCounter int, endGameDepth int) {
 }
 
 // Choose computer's next move: return x,y coords of move and its score.
+var orderedMoves [25][2]int = [25][2]int{
+	{1,1}, {1,3}, {3,3}, {1,1},
+	{0,1}, {0,3}, {1,4}, {3,4}, {4,3}, {4,1}, {3,0}, 
+	{0,0}, {0,4}, {4,4}, {4,0},
+	{2,2},
+	{1,2}, {2,3}, {3,2}, {2,1},
+	{0,2}, {2,0}, {2,4}, {4,2},
+}
+
 func chooseMove(bd *Board, deterministic bool) (int, int, int) {
 
 	var moves [25][2]int
@@ -152,22 +161,22 @@ func chooseMove(bd *Board, deterministic bool) (int, int, int) {
 
 	max := 2 * LOSS // A board can score less than LOSS
 
-	for i, row := range bd {
-		for j, mark := range row {
-			if mark == UNSET {
-				bd[i][j] = MAXIMIZER
-				val := -negaScout(bd, 1, MINIMIZER, 2*LOSS, 2*WIN)
-				bd[i][j] = UNSET
-				fmt.Printf("     <%d,%d>  %d\n", i, j, val)
-				if val >= max {
-					if val > max {
-						max = val
-						next = 0
-					}
-					moves[next][0] = i
-					moves[next][1] = j
-					next++
+	for _, cell := range orderedMoves {
+		i, j := cell[0], cell[1]
+		mark := bd[i][j]
+		if mark == UNSET {
+			bd[i][j] = MAXIMIZER
+			val := -negaScout(bd, 1, MINIMIZER, 2*LOSS, 2*WIN)
+			bd[i][j] = UNSET
+			fmt.Printf("     <%d,%d>  %d\n", i, j, val)
+			if val >= max {
+				if val > max {
+					max = val
+					next = 0
 				}
+				moves[next][0] = i
+				moves[next][1] = j
+				next++
 			}
 		}
 	}
