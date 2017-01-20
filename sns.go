@@ -1,5 +1,6 @@
 package main
 
+
 import (
 	"flag"
 	"fmt"
@@ -19,6 +20,7 @@ const (
 	UNSET     = 0
 )
 
+var leafNodeCount int = 0
 var maxDepth int = 10 // initializing to 10 not a mistake
 
 // Arrays of losing triplets and winning quads, indexed
@@ -94,6 +96,7 @@ func main() {
 
 		humanFirst = true
 
+		leafNodeCount = 0
 		a, b, score := chooseMove(&bd, *deterministic)
 
 		if a < 0 {
@@ -104,7 +107,7 @@ func main() {
 		moveCounter++
 
 		if *printBoardPtr {
-			fmt.Printf("My move: %d %d (%d)\n", a, b, score)
+			fmt.Printf("My move: %d %d (%d) [%d]\n", a, b, score, leafNodeCount)
 			printBoard(&bd)
 		} else {
 			fmt.Printf("%d %d\n", a, b)
@@ -159,16 +162,28 @@ func chooseMove(bd *Board, deterministic bool) (int, int, int) {
 	var moves [25][2]int
 	var next int
 
-	max := 2 * LOSS // A board can score less than LOSS
+	max := 2*LOSS // A board can score less than LOSS
+
+	beta := 2*WIN
+	alpha := 2*LOSS
+
+	b := beta
+	later := false
 
 	for _, cell := range orderedMoves {
 		i, j := cell[0], cell[1]
 		mark := bd[i][j]
 		if mark == UNSET {
 			bd[i][j] = MAXIMIZER
-			val := -negaScout(bd, 1, MINIMIZER, 2*LOSS, 2*WIN)
+			val := -negaScout(bd, 1, MINIMIZER, -b, -alpha)
+			if val > alpha && val < beta && later {
+				val = -negaScout(bd, 1, MINIMIZER, -beta, -alpha)
+			}
 			bd[i][j] = UNSET
-			fmt.Printf("     <%d,%d>  %d\n", i, j, val)
+			// fmt.Printf("	<%d,%d> (%d)\n", i, j, val)
+			if val > alpha {
+				alpha = val
+			}
 			if val >= max {
 				if val > max {
 					max = val
@@ -178,6 +193,11 @@ func chooseMove(bd *Board, deterministic bool) (int, int, int) {
 				moves[next][1] = j
 				next++
 			}
+			if alpha >= beta {
+				break
+			}
+			b = alpha + 1
+			later = true
 		}
 	}
 
@@ -192,7 +212,6 @@ func chooseMove(bd *Board, deterministic bool) (int, int, int) {
 		r = rand.Intn(next)
 	}
 
-	fmt.Printf("  <%d,%d>  %d\n", moves[r][0], moves[r][1], max)
 	return moves[r][0], moves[r][1], max
 }
 
@@ -236,6 +255,8 @@ var checkableCells [9][2]int = [9][2]int{
 // Calculates and returns the value of the move (x,y)
 // Only considers value gained or lost from the cell (x,y)
 func staticValue(bd *Board, ply int) (stopRecursing bool, value int) {
+
+leafNodeCount++
 
 	for _, cell := range checkableCells {
 		relevantQuads := indexedWinningQuads[cell[0]][cell[1]]
