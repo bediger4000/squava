@@ -19,6 +19,7 @@ const (
 	UNSET     = 0
 )
 
+var leafNodeCount int
 var maxDepth int = 10 // initializing to 10 not a mistake
 
 // Arrays of losing triplets and winning quads, indexed
@@ -94,6 +95,7 @@ func main() {
 
 		humanFirst = true
 
+		leafNodeCount = 0
 		a, b, score := chooseMove(&bd, *deterministic)
 
 		if a < 0 {
@@ -104,7 +106,7 @@ func main() {
 		moveCounter++
 
 		if *printBoardPtr {
-			fmt.Printf("My move: %d %d (%d)\n", a, b, score)
+			fmt.Printf("My move: %d %d (%d) [%d]\n", a, b, score, leafNodeCount)
 			printBoard(&bd)
 		} else {
 			fmt.Printf("%d %d\n", a, b)
@@ -158,7 +160,7 @@ func chooseMove(bd *Board, deterministic bool) (int, int, int) {
 				bd[i][j] = MAXIMIZER
 				val := alphaBeta(bd, 1, MINIMIZER, 2*LOSS, 2*WIN, i, j, 0)
 				bd[i][j] = UNSET
-				fmt.Printf("	<%d,%d>  %d\n", i, j, val)
+				// fmt.Printf("	<%d,%d>  %d\n", i, j, val)
 				if val >= max {
 					if val > max {
 						max = val
@@ -282,6 +284,7 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 					boardValue += delta
 					if stopRecursing {
 						bd[i][j] = UNSET
+						leafNodeCount++
 						return boardValue
 					}
 					n := alphaBeta(bd, ply+1, MINIMIZER, alpha, beta, i, j, boardValue)
@@ -308,6 +311,7 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 					boardValue += delta
 					if stopRecursing {
 						bd[i][j] = UNSET
+						leafNodeCount++
 						return boardValue
 					}
 					n := alphaBeta(bd, ply+1, -player, alpha, beta, i, j, boardValue)
