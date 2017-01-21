@@ -159,10 +159,7 @@ var orderedMoves [25][2]int = [25][2]int{
 
 func chooseMove(bd *Board, deterministic bool) (int, int, int) {
 
-	var moves [25][2]int
-	var next int
-
-	max := 2*LOSS // A board can score less than LOSS
+	var moves = MoveKeeper{next: 0, max: 2 * LOSS}
 
 	beta := 2*WIN
 	alpha := 2*LOSS
@@ -181,17 +178,9 @@ func chooseMove(bd *Board, deterministic bool) (int, int, int) {
 			}
 			bd[i][j] = UNSET
 			// fmt.Printf("	<%d,%d> (%d)\n", i, j, val)
+			moves.setMove(i, j, val)
 			if val > alpha {
 				alpha = val
-			}
-			if val >= max {
-				if val > max {
-					max = val
-					next = 0
-				}
-				moves[next][0] = i
-				moves[next][1] = j
-				next++
 			}
 			if alpha >= beta {
 				break
@@ -201,18 +190,7 @@ func chooseMove(bd *Board, deterministic bool) (int, int, int) {
 		}
 	}
 
-	if next == 0 {
-		// Loop over all 25 cells couldn't find any
-		// empty cells. Cat got the game.
-		return -1, -1, 0
-	}
-
-	r := 0
-	if !deterministic {
-		r = rand.Intn(next)
-	}
-
-	return moves[r][0], moves[r][1], max
+	return moves.chooseMove(deterministic)
 }
 
 func findWinner(bd *Board) int {
@@ -490,4 +468,41 @@ func setScores(randomize bool) {
 			[5]int{3, 3, 0, 3, 3},
 		}
 	}
+}
+
+// Struct and 2 functions to encapsulate tracking of
+// best possible move.
+
+type MoveKeeper struct {
+	moves [25][2]int
+	next  int        // index into moves[]
+	max   int
+}
+
+func (p *MoveKeeper) setMove(a, b int, value int) {
+	if value >= p.max {
+		if value > p.max {
+			p.max = value
+			p.next = 0
+		}
+		p.moves[p.next][0] = a
+		p.moves[p.next][1] = b
+		p.next++
+	}
+}
+
+func (p *MoveKeeper) chooseMove(deterministic bool) (x, y int, value int) {
+
+	if p.next == 0 {
+		// Loop over all 25 cells couldn't find any
+		// empty cells. Cat got the game.
+		return -1, -1, 0
+	}
+
+	r := 0
+	if !deterministic {
+		r = rand.Intn(p.next)
+	}
+
+	return p.moves[r][0], p.moves[r][1], p.max
 }
