@@ -149,8 +149,8 @@ func setDepth(moveCounter int, endGameDepth int) {
 
 // Choose computer's next move: return x,y coords of move and its score.
 var orderedMoves [25][2]int = [25][2]int{
-	{1,1}, {1,3}, {3,3}, {1,1},
-	{0,1}, {0,3}, {1,4}, {3,4}, {4,3}, {4,1}, {3,0}, 
+	{1,1}, {1,3}, {3,3}, {3,1},
+	{0,1}, {0,3}, {1,4}, {3,4}, {4,3}, {4,1}, {3,0}, {1,0},
 	{0,0}, {0,4}, {4,4}, {4,0},
 	{2,2},
 	{1,2}, {2,3}, {3,2}, {2,1},
