@@ -174,7 +174,7 @@ func (p *AlphaBeta) deltaValue(ply int, x, y int) (stopRecursing bool, value int
 		sum += p.bd[triplet[2][0]][triplet[2][1]]
 
 		if sum == 3 || sum == -3 {
-			return true, -sum / 3 * (WIN - ply)
+			return true, sum / 3 * (LOSS - ply)
 		}
 	}
 
