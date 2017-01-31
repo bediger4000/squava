@@ -252,7 +252,7 @@ func deltaValue(bd *Board, ply int, x, y int) (stopRecursing bool, value int) {
 	// If squava has a "cat game", then this is wrong. Cat
 	// games could stop recursing here.
 	stopRecursing = false
-	if ply >= maxDepth {
+	if ply == maxDepth {
 		stopRecursing = true
 	}
 
