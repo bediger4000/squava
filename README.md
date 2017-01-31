@@ -137,11 +137,18 @@ Other than tic-tac-toe, where it's feasible to check the entire game tree
 on every move, this is the first static valuation function I've written
 that actually produces a worthwhile opponent, and it's also quite simple.
 
-## Building the Golang program
+## Building the Golang programs
 
     go build squava.go
+    go build sns.go
+    go build playoff5.go
 
-## Running the Golang program
+`squava` will execute an Alpha-Beta minimax search for the best move. `sns` will execute
+a [NegaScout](https://www.cs.unm.edu/~aaron/downloads/qian_search.pdf) search.
+
+## Running the Golang programs
+
+`sns` and `squava` behave mostly identically.
 
     ./squava
     Your move:
@@ -152,15 +159,18 @@ The computer ponders, announces its move, and displays the board. Human plays
 
 You can have the computer go first:
 
-    ./squava -C
-	My move: 2 2
+    ./sns -C
+	My move: 0 0 (30) [2800381]
        0 1 2 3 4
-    0  _ _ _ _ _
+    0  X _ _ _ _
     1  _ _ _ _ _
-    2  _ _ X _ _
+    2  _ _ _ _ _
     3  _ _ _ _ _
     4  _ _ _ _ _
     Your move:
+
+`sns` chose the cell at <0,0>, which had a value of 30, and visited 2,800,381 leaf nodes
+of the game tree to arrive at that move.
 
 You can force the computer to choose a particular opening move:
 
@@ -186,6 +196,45 @@ that move into the second instance, which expects the "human" to move first.
 
 25-move games are possible. As near as I can tell 'O' (second player) always
 wins those full-board games. I don't have a proof for this yet.
+
+The `playoff5` program allows you to run instances of two algorithms against
+each other:
+
+    $ ./playoff5
+    AlphaBeta <3,3> (18) [95864]
+    NegaScout <4,0> (5) [4134847]
+       0 1 2 3 4
+    0  _ _ _ _ _ 
+    1  _ _ _ _ _ 
+    2  _ _ _ _ _ 
+    3  _ _ _ X _ 
+    4  O _ _ _ _ 
+    
+    AlphaBeta <3,1> (99) [184528]
+    NegaScout <2,4> (30) [1377241]
+       0 1 2 3 4
+    0  _ _ _ _ _ 
+    1  _ _ _ _ _ 
+    2  _ _ _ _ O 
+    3  _ X _ X _ 
+    4  O _ _ _ _ 
+    ...
+
+The AlphaBeta instance almost always wins. You can play off two of the same algorithm, or
+order them differently:
+
+    $  ./playoff5 -1 N -2 A
+    NegaScout <3,2> (30) [2800381]
+    AlphaBeta <2,1> (-8) [405536]
+       0 1 2 3 4
+    0  _ _ _ _ _ 
+    1  _ _ _ _ _ 
+    2  _ O _ _ _ 
+    3  _ _ X _ _ 
+    4  _ _ _ _ _ 
+    ...
+
+
 
 ## JavaScript Program
 
