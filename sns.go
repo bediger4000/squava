@@ -181,8 +181,18 @@ func reorderMoves(bd *Board) {
 					interesting = true
 					break
 				}
+				if sum == 2 {
+					goodCells = append(goodCells, cell)
+					interesting = true
+					break
+				}
 				if sum == -3 {
 					// It's a hole in a potential 4-in-a-row
+					badCells = append(badCells, cell)
+					interesting = true
+					break
+				}
+				if sum == -2 {
 					badCells = append(badCells, cell)
 					interesting = true
 					break
@@ -318,8 +328,6 @@ var checkableCells [9][2]int = [9][2]int{
 	{2, 4}, {3, 2}, {4, 2},
 }
 
-// Calculates and returns the value of the move (x,y)
-// Only considers value gained or lost from the cell (x,y)
 func staticValue(bd *Board, ply int) (stopRecursing bool, value int) {
 
 	leafNodeCount++
@@ -382,7 +390,7 @@ func negaScout(bd *Board, ply int, player int, alpha int, beta int) (value int) 
 		return player*boardValue
 	}
 
-	score := 2*LOSS
+	score := 3*LOSS
 	n := beta
 
 	for _, cell := range orderedMoves[player+1] {
