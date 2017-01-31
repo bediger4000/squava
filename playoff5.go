@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"math/rand"
+	"negascout"
 	"os"
 	"time"
 )
@@ -14,15 +15,23 @@ const (
 	MINIMIZER = -1
 )
 
+type Player interface {
+	MakeMove(int, int, int) // x,y corrds, type of player (MINIMIZER, MAXIMIZER)
+	SetDepth(int)
+	ChooseMove() (int, int, int, int) // x,y coords of move, value, leaf node count
+	PrintBoard()
+	SetScores(bool)
+	FindWinner() int
+}
+
 func main() {
 
 	maxDepthPtr := flag.Int("d", 10, "maximum lookahead depth")
 	deterministic := flag.Bool("D", false, "Play deterministically")
-	printBoardPtr := flag.Bool("n", false, "Don't print board, just emit moves")
 	randomizeScores := flag.Bool("r", false, "Randomize bias scores")
+	firstType := flag.String("1", "A", "first player type, A: alphabeta, N: negascout")
+	secondType := flag.String("2", "N", "first player type, A: alphabeta, N: negascout")
 	flag.Parse()
-
-	*printBoardPtr = !*printBoardPtr
 
 	rand.Seed(time.Now().UTC().UnixNano())
 
@@ -30,41 +39,74 @@ func main() {
 
 	moveCounter := 0
 
-	first := alphabeta.New(*deterministic, *maxDepthPtr)
-	second := alphabeta.New(*deterministic, *maxDepthPtr)
+	var first, second Player
+
+	var firstName string
+	var secondName string
+	switch *firstType {
+	case "A":
+		first = alphabeta.New(*deterministic, *maxDepthPtr)
+		firstName = "AlphaBeta"
+	case "N":
+		first = negascout.New(*deterministic, *maxDepthPtr)
+		firstName = "NegaScout"
+	}
+
+	switch *secondType {
+	case "A":
+		second = alphabeta.New(*deterministic, *maxDepthPtr)
+		secondName = "AlphaBeta"
+	case "N":
+		second = negascout.New(*deterministic, *maxDepthPtr)
+		secondName = "NegaScout"
+	}
+
 	first.SetScores(*randomizeScores)
 	second.SetScores(*randomizeScores)
 
 	for moveCounter < 25 {
 
 		first.SetDepth(moveCounter)
+
 		i, j, value, leafCount := first.ChooseMove()
+		second.MakeMove(i, j, MINIMIZER)
+
 		moveCounter++
-		fmt.Printf("First <%d,%d> (%d) [%d]\n", i, j, value, leafCount)
-		//first.PrintBoard()
+		fmt.Printf("%s <%d,%d> (%d) [%d]\n", firstName, i, j, value, leafCount)
 
-		winner = first.FindWinner()
-
+		winner = first.FindWinner() // main() thinks first is maximizer
 		if winner != 0 || moveCounter >= 25 {
 			break
 		}
 
-		second.MakeMove(i, j, MINIMIZER)
-
 		second.SetDepth(moveCounter)
+
 		i, j, value, leafCount = second.ChooseMove()
+		first.MakeMove(i, j, MINIMIZER)
+
 		moveCounter++
-		fmt.Printf("Secnd <%d,%d> (%d) [%d]\n", i, j, value, leafCount)
-		second.PrintBoard()
+		fmt.Printf("%s <%d,%d> (%d) [%d]\n", secondName, i, j, value, leafCount)
 
-		winner = -second.FindWinner()
+		first.PrintBoard()
 
+		winner = -second.FindWinner() // main thinks second is minimizer
 		if winner != 0 {
 			break
 		}
 
-		first.MakeMove(i, j, MINIMIZER)
 	}
+
+	switch winner {
+	case 1:
+		fmt.Printf("X wins\n")
+	case -1:
+		fmt.Printf("0 wins\n")
+	default:
+		fmt.Printf("Cat wins\n")
+	}
+
+	first.PrintBoard()
+	second.PrintBoard()
 
 	os.Exit(0)
 }
