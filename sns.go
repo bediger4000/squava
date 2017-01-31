@@ -148,7 +148,7 @@ func setDepth(moveCounter int, endGameDepth int) {
 }
 
 // Choose computer's next move: return x,y coords of move and its score.
-var orderedMoves [25][2]int = [25][2]int{
+var initialOrderedMoves [25][2]int = [25][2]int{
 	{1,1}, {1,3}, {3,3}, {3,1},
 	{0,1}, {0,3}, {1,4}, {3,4}, {4,3}, {4,1}, {3,0}, {1,0},
 	{0,0}, {0,4}, {4,4}, {4,0},
@@ -157,36 +157,124 @@ var orderedMoves [25][2]int = [25][2]int{
 	{0,2}, {2,0}, {2,4}, {4,2},
 }
 
+var orderedMoves [3][][2]int
+
+func reorderMoves(bd *Board) {
+	var goodCells [][2]int
+	var badCells [][2]int
+	var dullCells [][2]int
+	unsetCount := 0
+	for _, cell := range initialOrderedMoves {
+		if bd[cell[0]][cell[1]] == UNSET {
+			unsetCount++
+			interesting := false
+			relevantQuads := indexedWinningQuads[cell[0]][cell[1]]
+			for _, quad := range relevantQuads {
+				sum := bd[quad[0][0]][quad[0][1]]
+				sum += bd[quad[1][0]][quad[1][1]]
+				sum += bd[quad[2][0]][quad[2][1]]
+				sum += bd[quad[3][0]][quad[3][1]]
+
+				if sum == 3 {
+					// It's a hole in a potential 4-in-a-row
+					goodCells = append(goodCells, cell)
+					interesting = true
+					break
+				}
+				if sum == -3 {
+					// It's a hole in a potential 4-in-a-row
+					badCells = append(badCells, cell)
+					interesting = true
+					break
+				}
+			}
+			if !interesting {
+				relevantTriplets := indexedLosingTriplets[cell[0]][cell[1]]
+				for _, triplet := range relevantTriplets {
+					sum := bd[triplet[0][0]][triplet[0][1]]
+					sum += bd[triplet[1][0]][triplet[1][1]]
+					sum += bd[triplet[2][0]][triplet[2][1]]
+
+					if sum == -2 {
+						goodCells = append(goodCells, cell)
+						interesting = true
+						break
+					}
+					if sum == 2 {
+						badCells = append(badCells, cell)
+						interesting = true
+						break
+					}
+				}
+			}
+			if !interesting {
+				dullCells = append(dullCells, cell)
+			}
+		}
+	}
+/*
+	fmt.Printf("Counted %d unset cells\n", unsetCount)
+	fmt.Printf("Counted %d 'good' cells\n", len(goodCells))
+	fmt.Printf("Counted %d 'bad' cells\n", len(badCells))
+	fmt.Printf("Counted %d 'dull' cells\n", len(dullCells))
+*/
+
+
+	l := len(goodCells)
+	for _, cell := range dullCells {
+		goodCells = append(goodCells, cell)
+	}
+	for _, cell := range badCells {
+		goodCells = append(goodCells, cell)
+	}
+
+	for _, cell := range dullCells {
+		badCells = append(badCells, cell)
+	}
+	for _, cell := range goodCells[0:l] {
+		badCells = append(badCells, cell)
+	}
+/*
+	if len(goodCells) != unsetCount {
+		fmt.Printf("Counted %d unset cells\n", unsetCount)
+		fmt.Printf("Found %d on list\n", len(goodCells))
+		printBoard(bd)
+		fmt.Printf("%v\n", goodCells)
+	}
+*/
+
+	orderedMoves[0] = badCells
+	orderedMoves[2] = goodCells
+}
+
 func chooseMove(bd *Board, deterministic bool) (int, int, int) {
 
-	var moves = MoveKeeper{next: 0, max: 2 * LOSS}
+	var moves = MoveKeeper{next: 0, max: 3*LOSS}
+
+	reorderMoves(bd)
 
 	beta := 2*WIN
 	alpha := 2*LOSS
+	score := 3*LOSS
+	n := beta
 
-	b := beta
-	later := false
-
-	for _, cell := range orderedMoves {
+	for _, cell := range orderedMoves[2] {
 		i, j := cell[0], cell[1]
-		mark := bd[i][j]
-		if mark == UNSET {
+		if bd[i][j] == UNSET {
 			bd[i][j] = MAXIMIZER
-			val := -negaScout(bd, 1, MINIMIZER, -b, -alpha)
-			if val > alpha && val < beta && later {
-				val = -negaScout(bd, 1, MINIMIZER, -beta, -alpha)
+			cur := -negaScout(bd, 1, MINIMIZER, -n, -alpha)
+			if cur > score {
+				if n == beta {
+					score = cur
+				} else {
+					score = -negaScout(bd, 1, MINIMIZER, -beta, -cur)
+				}
 			}
 			bd[i][j] = UNSET
-			// fmt.Printf("	<%d,%d> (%d)\n", i, j, val)
-			moves.setMove(i, j, val)
-			if val > alpha {
-				alpha = val
-			}
-			if alpha >= beta {
-				break
-			}
-			b = alpha + 1
-			later = true
+			if score > alpha { alpha = score }
+			moves.setMove(i, j, alpha)
+			if alpha >= beta { break }
+			n = alpha + 1
 		}
 	}
 
@@ -234,7 +322,7 @@ var checkableCells [9][2]int = [9][2]int{
 // Only considers value gained or lost from the cell (x,y)
 func staticValue(bd *Board, ply int) (stopRecursing bool, value int) {
 
-leafNodeCount++
+	leafNodeCount++
 
 	for _, cell := range checkableCells {
 		relevantQuads := indexedWinningQuads[cell[0]][cell[1]]
@@ -266,19 +354,21 @@ leafNodeCount++
 		}
 	}
 
-	// Give it a slight bias for those early
-	// moves when all losing-triplets and winning-quads
-	// are beyond the horizon.
-	for x := 0; x < 5; x++ {
-		for y := 0; y < 5; y++ {
-			value += bd[x][y] * scores[x][y]
+	if value == 0 {
+		// Give it a slight bias for those early
+		// moves when all losing-triplets and winning-quads
+		// are beyond the horizon.
+		for x := 0; x < 5; x++ {
+			for y := 0; y < 5; y++ {
+				value += bd[x][y] * scores[x][y]
+			}
 		}
 	}
 
 	// If squava has a "cat game", then this is wrong. Cat
 	// games could stop recursing here.
 	stopRecursing = false
-	if ply >= maxDepth {
+	if ply > maxDepth {
 		stopRecursing = true
 	}
 
@@ -292,30 +382,29 @@ func negaScout(bd *Board, ply int, player int, alpha int, beta int) (value int) 
 		return player*boardValue
 	}
 
-	b := beta
-	later := false
+	score := 2*LOSS
+	n := beta
 
-	for i, row := range bd {
-		for j, marker := range row {
-			if marker == UNSET {
-				bd[i][j] = player
-				t := -negaScout(bd, ply+1, -player, -b, -alpha)
-				if t > alpha && t < beta && later {
-					t = -negaScout(bd, ply+1, -player, -beta, -alpha)
+	for _, cell := range orderedMoves[player+1] {
+		i, j := cell[0], cell[1]
+		if bd[i][j] == UNSET {
+			bd[i][j] = player
+			cur := -negaScout(bd, ply+1, -player, -n, -alpha)
+			if cur > score {
+				if n == beta || ply == maxDepth - 2 {
+					score = cur
+				} else {
+					score = -negaScout(bd, ply+1, -player, -beta, -cur)
 				}
-				bd[i][j] = UNSET
-				if t > alpha {
-					alpha = t
-				}
-				if alpha >= beta {
-					return alpha
-				}
-				b = alpha + 1
 			}
-			later = true
+			bd[i][j] = UNSET
+			if score > alpha { alpha = score }
+			if alpha >= beta { break }
+			n = alpha + 1
 		}
 	}
-	return alpha
+
+	return score
 }
 
 func printBoard(bd *Board) {
