@@ -1,6 +1,5 @@
 package main
 
-
 import (
 	"flag"
 	"fmt"
@@ -149,12 +148,12 @@ func setDepth(moveCounter int, endGameDepth int) {
 
 // Choose computer's next move: return x,y coords of move and its score.
 var initialOrderedMoves [25][2]int = [25][2]int{
-	{1,1}, {1,3}, {3,3}, {3,1},
-	{0,1}, {0,3}, {1,4}, {3,4}, {4,3}, {4,1}, {3,0}, {1,0},
-	{0,0}, {0,4}, {4,4}, {4,0},
-	{2,2},
-	{1,2}, {2,3}, {3,2}, {2,1},
-	{0,2}, {2,0}, {2,4}, {4,2},
+	{1, 1}, {1, 3}, {3, 3}, {3, 1},
+	{0, 1}, {0, 3}, {1, 4}, {3, 4}, {4, 3}, {4, 1}, {3, 0}, {1, 0},
+	{0, 0}, {0, 4}, {4, 4}, {4, 0},
+	{2, 2},
+	{1, 2}, {2, 3}, {3, 2}, {2, 1},
+	{0, 2}, {2, 0}, {2, 4}, {4, 2},
 }
 
 var orderedMoves [3][][2]int
@@ -222,13 +221,6 @@ func reorderMoves(bd *Board) {
 			}
 		}
 	}
-/*
-	fmt.Printf("Counted %d unset cells\n", unsetCount)
-	fmt.Printf("Counted %d 'good' cells\n", len(goodCells))
-	fmt.Printf("Counted %d 'bad' cells\n", len(badCells))
-	fmt.Printf("Counted %d 'dull' cells\n", len(dullCells))
-*/
-
 
 	l := len(goodCells)
 	for _, cell := range dullCells {
@@ -244,14 +236,6 @@ func reorderMoves(bd *Board) {
 	for _, cell := range goodCells[0:l] {
 		badCells = append(badCells, cell)
 	}
-/*
-	if len(goodCells) != unsetCount {
-		fmt.Printf("Counted %d unset cells\n", unsetCount)
-		fmt.Printf("Found %d on list\n", len(goodCells))
-		printBoard(bd)
-		fmt.Printf("%v\n", goodCells)
-	}
-*/
 
 	orderedMoves[0] = badCells
 	orderedMoves[2] = goodCells
@@ -259,13 +243,13 @@ func reorderMoves(bd *Board) {
 
 func chooseMove(bd *Board, deterministic bool) (int, int, int) {
 
-	var moves = MoveKeeper{next: 0, max: 3*LOSS}
+	var moves = MoveKeeper{next: 0, max: 3 * LOSS}
 
 	reorderMoves(bd)
 
-	beta := 2*WIN
-	alpha := 2*LOSS
-	score := 3*LOSS
+	beta := 2 * WIN
+	alpha := 2 * LOSS
+	score := 3 * LOSS
 	n := beta
 
 	for _, cell := range orderedMoves[2] {
@@ -281,9 +265,13 @@ func chooseMove(bd *Board, deterministic bool) (int, int, int) {
 				}
 			}
 			bd[i][j] = UNSET
-			if score > alpha { alpha = score }
+			if score > alpha {
+				alpha = score
+			}
 			moves.setMove(i, j, alpha)
-			if alpha >= beta { break }
+			if alpha >= beta {
+				break
+			}
 			n = alpha + 1
 		}
 	}
@@ -314,6 +302,13 @@ func findWinner(bd *Board) int {
 	}
 
 	return 0
+}
+
+var deadlyQuads [4][4][2]int = [4][4][2]int{
+	{{1, 0}, {2, 1}, {3, 2}, {4, 3}},
+	{{4, 1}, {3, 2}, {2, 3}, {1, 4}},
+	{{0, 1}, {1, 2}, {2, 3}, {3, 4}},
+	{{3, 0}, {2, 1}, {1, 2}, {0, 3}},
 }
 
 // It turns out that you only have to look at
@@ -362,6 +357,15 @@ func staticValue(bd *Board, ply int) (stopRecursing bool, value int) {
 		}
 	}
 
+	for _, quad := range deadlyQuads {
+		outer := bd[quad[0][0]][quad[0][1]] + bd[quad[3][0]][quad[3][1]]
+		inner := bd[quad[1][0]][quad[1][1]] + bd[quad[2][0]][quad[2][1]]
+
+		if (inner == 2 || inner == -2) && outer == 0 {
+			value += -inner * 5
+		}
+	}
+
 	if value == 0 {
 		// Give it a slight bias for those early
 		// moves when all losing-triplets and winning-quads
@@ -387,10 +391,10 @@ func negaScout(bd *Board, ply int, player int, alpha int, beta int) (value int) 
 
 	stopRecursing, boardValue := staticValue(bd, ply)
 	if stopRecursing {
-		return player*boardValue
+		return player * boardValue
 	}
 
-	score := 3*LOSS
+	score := 3 * LOSS
 	n := beta
 
 	for _, cell := range orderedMoves[player+1] {
@@ -399,15 +403,19 @@ func negaScout(bd *Board, ply int, player int, alpha int, beta int) (value int) 
 			bd[i][j] = player
 			cur := -negaScout(bd, ply+1, -player, -n, -alpha)
 			if cur > score {
-				if n == beta || ply == maxDepth - 2 {
+				if n == beta || ply == maxDepth-2 {
 					score = cur
 				} else {
 					score = -negaScout(bd, ply+1, -player, -beta, -cur)
 				}
 			}
 			bd[i][j] = UNSET
-			if score > alpha { alpha = score }
-			if alpha >= beta { break }
+			if score > alpha {
+				alpha = score
+			}
+			if alpha >= beta {
+				break
+			}
 			n = alpha + 1
 		}
 	}
@@ -572,7 +580,7 @@ func setScores(randomize bool) {
 
 type MoveKeeper struct {
 	moves [25][2]int
-	next  int        // index into moves[]
+	next  int // index into moves[]
 	max   int
 }
 
