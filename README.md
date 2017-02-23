@@ -30,6 +30,7 @@ Command line, text interface.  `squava` (the program) command line options:
             maximum lookahead depth (default 10)
       -n    Don't print board, just emit moves
       -r    Randomize bias scores
+      -B    Computer takes first move, opens from a "book"
 
 
 Alpha-Beta minimax, [algorithm](https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning)
