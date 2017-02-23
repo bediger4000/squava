@@ -72,7 +72,7 @@ func main() {
 		second.MakeMove(i, j, MINIMIZER)
 
 		moveCounter++
-		fmt.Printf("%s <%d,%d> (%d) [%d]\n", firstName, i, j, value, leafCount)
+		fmt.Printf("X (%s) <%d,%d> (%d) [%d]\n", firstName, i, j, value, leafCount)
 
 		winner = first.FindWinner() // main() thinks first is maximizer
 		if winner != 0 || moveCounter >= 25 {
@@ -85,7 +85,7 @@ func main() {
 		first.MakeMove(i, j, MINIMIZER)
 
 		moveCounter++
-		fmt.Printf("%s <%d,%d> (%d) [%d]\n", secondName, i, j, value, leafCount)
+		fmt.Printf("O (%s) <%d,%d> (%d) [%d]\n", secondName, i, j, value, leafCount)
 
 		first.PrintBoard()
 
@@ -98,15 +98,14 @@ func main() {
 
 	switch winner {
 	case 1:
-		fmt.Printf("X wins\n")
+		fmt.Printf("X (%s) wins\n", firstName)
 	case -1:
-		fmt.Printf("0 wins\n")
+		fmt.Printf("0 (%s) wins\n", secondName)
 	default:
 		fmt.Printf("Cat wins\n")
 	}
 
 	first.PrintBoard()
-	second.PrintBoard()
 
 	os.Exit(0)
 }
