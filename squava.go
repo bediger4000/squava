@@ -37,6 +37,7 @@ func main() {
 	printBoardPtr := flag.Bool("n", false, "Don't print board, just emit moves")
 	firstMovePtr := flag.String("M", "", "Tell computer to make this first move (x,y)")
 	randomizeScores := flag.Bool("r", false, "Randomize bias scores")
+	useBook := flag.Bool("B", false, "Use book start")
 	flag.Parse()
 
 	*printBoardPtr = !*printBoardPtr
@@ -63,7 +64,15 @@ func main() {
 		humanFirst = false
 	}
 
+	moveCounter := 0
 	var bd Board
+
+	if *useBook {
+		fmt.Printf("Using opening book\n")
+		humanFirst = false
+		*firstMovePtr = ""
+		moveCounter += bookStart(&bd)
+	}
 
 	if *firstMovePtr != "" {
 		var x1, y1 int
@@ -75,8 +84,6 @@ func main() {
 	}
 
 	var endOfGame bool = false
-
-	moveCounter := 0
 
 	for !endOfGame {
 		setDepth(moveCounter, *maxDepthPtr)
@@ -473,12 +480,116 @@ func setScores(randomize bool) {
 	}
 }
 
+// Implement an opening "book". Make the first move in
+// one of the 4 upper-right-hand cells. Next try to make
+// the diagonal end of 4-in-a-row off that first move.
+// If that cell is taken, try to get the "corner", so
+// as to be able to make a diagonal off the corner,
+// while getting the ends of a 4-in-a-row with the
+// original move. Then, complete the "triangle of
+// doom" with the third move. A configuration where
+// the human takes the end of the initial diagonal
+// and the opposite corner causes it to bail out of
+// the book early.
+
+const (
+	FIRST = iota
+	DIAGONAL
+	CORNER
+	OTHERCORNER
+	OTHERDIAGONAL
+	LAST
+)
+
+var firstMoves [4][2]int = [4][2]int{
+	[2]int{0, 0},
+	[2]int{0, 1},
+	[2]int{1, 0},
+	[2]int{1, 1},
+}
+
+func bookStart(bd *Board) int {
+
+	state := FIRST
+	moveCount := 0
+
+	var c_x, c_y int
+
+	for state != LAST {
+		switch state {
+		case FIRST:
+			c := firstMoves[rand.Intn(4)]
+			c_x, c_y = c[0], c[1]
+			bd[c_x][c_y] = MAXIMIZER
+			state = DIAGONAL
+			moveCount++
+		case DIAGONAL:
+			p_x, p_y := c_x+3, c_y+3
+			if bd[p_x][p_y] == UNSET {
+				c_x += 3
+				c_y += 3
+				bd[c_x][c_y] = MAXIMIZER
+				moveCount++
+				state = CORNER
+			} else {
+				state = OTHERCORNER
+			}
+		case CORNER:
+			p_x, p_y := c_x-3, c_y
+			if bd[p_x][p_y] == UNSET {
+				c_x -= 3
+				bd[c_x][c_y] = MAXIMIZER
+				moveCount++
+			} else {
+				p_x, p_y = c_x, c_y-3
+				if bd[p_x][p_y] == UNSET {
+					c_y -= 3
+					bd[c_x][c_y] = MAXIMIZER
+					moveCount++
+				}
+			}
+			state = LAST
+		case OTHERCORNER:
+			// Didn't get desired diagonal
+			p_x, p_y := c_x, c_y+3
+			if bd[p_x][p_y] == UNSET {
+				c_y += 3
+				bd[c_x][c_y] = MAXIMIZER
+				moveCount++
+				state = OTHERDIAGONAL
+			} else {
+				fmt.Printf("Unreachable state in OTHERCORNER\n")
+				printBoard(bd)
+				os.Exit(99)
+			}
+		case OTHERDIAGONAL:
+			p_x, p_y := c_x+3, c_y-3
+			if bd[p_x][p_y] == UNSET {
+				c_x += 3
+				c_y -= 3
+				bd[c_x][c_y] = MAXIMIZER
+				moveCount++
+			}
+			state = LAST
+		}
+		if (moveCount%2) == 1 {
+			fmt.Printf("My move: %d %d\n", c_x, c_y)
+			printBoard(bd)
+			l, m := readMove(bd, true)
+			bd[l][m] = MINIMIZER
+			moveCount++
+		}
+	}
+
+	return moveCount
+}
+
 // Struct and 2 functions to encapsulate tracking of
 // best possible move.
 
 type MoveKeeper struct {
 	moves [25][2]int
-	next  int        // index into moves[]
+	next  int // index into moves[]
 	max   int
 }
 
