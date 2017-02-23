@@ -139,6 +139,13 @@ func (p *NegaScout) FindWinner() int {
 	return 0
 }
 
+var deadlyQuads [4][4][2]int = [4][4][2]int{
+	{{1,0}, {2,1}, {3,2}, {4,3}},
+	{{4,1}, {3,2}, {2,3}, {1,4}},
+	{{0,1}, {1,2}, {2,3}, {3,4}},
+	{{3,0}, {2,1}, {1,2}, {0,3}},
+}
+
 // It turns out that you only have to look at
 // the 4-in-a-rows that contain these 9 cells
 // to check every 4-in-a-row. Similarly, you
@@ -182,6 +189,15 @@ func (p *NegaScout) staticValue(ply int) (stopRecursing bool, value int) {
 			if sum == 3 || sum == -3 {
 				return true, -sum / 3 * (WIN - ply)
 			}
+		}
+	}
+
+	for _, quad := range deadlyQuads {
+		outer := p.bd[quad[0][0]][quad[0][1]] + p.bd[quad[3][0]][quad[3][1]]
+		inner := p.bd[quad[1][0]][quad[1][1]] + p.bd[quad[2][0]][quad[2][1]]
+
+		if (inner == 2 || inner == -2) && outer == 0 {
+			value -= inner/2 * 5
 		}
 	}
 
