@@ -223,19 +223,10 @@ func reorderMoves(bd *Board) {
 	}
 
 	l := len(goodCells)
-	for _, cell := range dullCells {
-		goodCells = append(goodCells, cell)
-	}
-	for _, cell := range badCells {
-		goodCells = append(goodCells, cell)
-	}
-
-	for _, cell := range dullCells {
-		badCells = append(badCells, cell)
-	}
-	for _, cell := range goodCells[0:l] {
-		badCells = append(badCells, cell)
-	}
+	goodCells = append(goodCells, dullCells...)
+	goodCells = append(goodCells, badCells...)
+	badCells = append(badCells, dullCells...)
+	badCells = append(badCells, goodCells)
 
 	orderedMoves[0] = badCells
 	orderedMoves[2] = goodCells
