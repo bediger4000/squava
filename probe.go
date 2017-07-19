@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -26,6 +27,11 @@ var leafNodes int
 
 func main() {
 
+	if len(os.Args) < 2 {
+		fmt.Printf("./probe depth [m,n [m,n ...]]\n")
+		os.Exit(1)
+	}
+
 	// Set up for use by value-calculation section of alphaBeta()
 	for _, triplet := range losingTriplets {
 		for _, pair := range triplet {
@@ -44,22 +50,19 @@ func main() {
 	var bd Board
 
 	var moveSequence [][2]int
-	var x, y int
 	var nextPly int
 	var nextPlayer int = MAXIMIZER
+	var cell [2]int
 
-	for idx, str := range os.Args[2:] {
-		if (idx % 2) == 1 {
-			var cell [2]int
-			y, _ = strconv.Atoi(str)
-			cell[0], cell[1] = x, y
-			moveSequence = append(moveSequence, cell)
-			bd[x][y] = nextPlayer
-			nextPly++
-			nextPlayer = -nextPlayer
-		} else {
-			x, _ = strconv.Atoi(str)
-		}
+	for _, str := range os.Args[2:] {
+		mn := strings.Split(str, ",")
+		m, _ := strconv.Atoi(mn[0])
+		n, _ := strconv.Atoi(mn[1])
+		cell[0], cell[1] = m, n
+		moveSequence = append(moveSequence, cell)
+		bd[m][n] = nextPlayer
+		nextPly++
+		nextPlayer = -nextPlayer
 	}
 
 	fmt.Printf("next ply: %d\nnext player: %d\n", nextPly, nextPlayer)
@@ -125,9 +128,9 @@ func main() {
 
 	fmt.Printf("%s  %d  ", os.Args[0], maxDepth)
 	for _, cell := range moveSequence {
-		fmt.Printf("  %d %d", cell[0], cell[1])
+		fmt.Printf(" %d,%d", cell[0], cell[1])
 	}
-	fmt.Printf("  %d %d", bestMoves[0][0], bestMoves[0][1])
+	fmt.Printf(" %d,%d", bestMoves[0][0], bestMoves[0][1])
 	fmt.Printf("\n")
 
 	os.Exit(0)
