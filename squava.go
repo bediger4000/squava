@@ -133,7 +133,7 @@ func main() {
 		case MINIMIZER:
 			phrase = "\nO wins\n"
 		}
-		fmt.Printf(phrase)
+		fmt.Print(phrase)
 
 		printBoard(&bd)
 	}
