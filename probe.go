@@ -74,27 +74,32 @@ func main() {
 	}
 	fmt.Printf("\n\n")
 
+	printBoard(&bd)
+
 	var bestValue int
 	var bestMoves [25][2]int
 	var bestNext int
 
 	switch nextPlayer {
 	case MAXIMIZER:
-		bestValue = LOSS
+		bestValue = 2*LOSS
 	case MINIMIZER:
-		bestValue = WIN
+		bestValue = 2*WIN
 	}
 
 	for i := 0; i < 5; i++ {
 		for j := 0; j < 5; j++ {
 			if bd[i][j] == UNSET {
 				bd[i][j] = nextPlayer
+				stopRecursing, val := deltaValue(&bd, 0, i, j)
 				leafNodes = 0
 				before := time.Now()
-				val := alphaBeta(&bd, nextPly, -nextPlayer, LOSS, WIN, i, j, 0)
+				if !stopRecursing {
+					val = alphaBeta(&bd, 0, -nextPlayer, 2*LOSS, 2*WIN, i, j, val)
+				}
 				after := time.Now()
 				bd[i][j] = UNSET
-				fmt.Printf("<%d,%d>\t%d (%d) [%d]\t%v\n", i, j, val, scores[i][j], leafNodes, after.Sub(before))
+				fmt.Printf("<%d,%d>\t%d [%d]\t%v\n", i, j, val, leafNodes, after.Sub(before))
 				switch nextPlayer {
 				case MAXIMIZER:
 					if val >= bestValue {
@@ -132,8 +137,56 @@ func main() {
 	}
 	fmt.Printf(" %d,%d", bestMoves[0][0], bestMoves[0][1])
 	fmt.Printf("\n")
+	bd[bestMoves[0][0]][bestMoves[0][1]] = nextPlayer
+	printBoard(&bd)
+	fmt.Printf("\n")
 
 	os.Exit(0)
+}
+
+// Calculates and returns the value of the move (x,y)
+// Only considers value gained or lost from the cell (x,y)
+func deltaValue(bd *Board, ply int, x, y int) (stopRecursing bool, value int) {
+
+	relevantQuads := indexedWinningQuads[x][y]
+	for _, quad := range relevantQuads {
+		sum := bd[quad[0][0]][quad[0][1]]
+		sum += bd[quad[1][0]][quad[1][1]]
+		sum += bd[quad[2][0]][quad[2][1]]
+		sum += bd[quad[3][0]][quad[3][1]]
+
+		if sum == 4 || sum == -4 {
+			return true, bd[quad[0][0]][quad[0][1]] * (WIN - ply)
+		}
+		if sum == 3 || sum == -3 {
+			value += sum * 10
+		}
+	}
+
+	relevantTriplets := indexedLosingTriplets[x][y]
+	for _, triplet := range relevantTriplets {
+		sum := bd[triplet[0][0]][triplet[0][1]]
+		sum += bd[triplet[1][0]][triplet[1][1]]
+		sum += bd[triplet[2][0]][triplet[2][1]]
+
+		if sum == 3 || sum == -3 {
+			return true, -sum / 3 * (WIN - ply)
+		}
+	}
+
+	// Give it a slight bias for those early
+	// moves when all losing-triplets and winning-quads
+	// are beyond the horizon.
+	value += bd[x][y] * scores[x][y]
+
+	// If squava has a "cat game", then this is wrong. Cat
+	// games could stop recursing here.
+	stopRecursing = false
+	if ply == maxDepth {
+		stopRecursing = true
+	}
+
+	return stopRecursing, value
 }
 
 // It turns out that you only have to look at
@@ -148,95 +201,87 @@ var checkableCells [9][2]int = [9][2]int{
 	{2, 4}, {3, 2}, {4, 2},
 }
 
-// nextPlayer makes move in this invocation.
-// previous player (-nextPlayer) just made the move <x,y>,
-// bd has value boardValue not including that move.
-func alphaBeta(bd *Board, ply int, nextPlayer int, alpha int, beta int, x int, y int, boardValue int) (value int) {
+// player makes move in this invocation.
+// previous player (-player) just made the move <x,y>,
+// bd has value boardValue.
+func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int, boardValue int) (value int) {
 
-	relevantQuads := indexedWinningQuads[x][y]
-	for _, quad := range relevantQuads {
-		sum := bd[quad[0][0]][quad[0][1]]
-		sum += bd[quad[1][0]][quad[1][1]]
-		sum += bd[quad[2][0]][quad[2][1]]
-		sum += bd[quad[3][0]][quad[3][1]]
-
-		if sum == 4 || sum == -4 {
-			leafNodes++
-			return bd[quad[0][0]][quad[0][1]] * (WIN - ply)
-		}
-		if sum == 3 || sum == -3 {
-			boardValue += sum * 10
-		}
-	}
-
-	relevantTriplets := indexedLosingTriplets[x][y]
-	for _, triplet := range relevantTriplets {
-		sum := bd[triplet[0][0]][triplet[0][1]]
-		sum += bd[triplet[1][0]][triplet[1][1]]
-		sum += bd[triplet[2][0]][triplet[2][1]]
-
-		if sum == 3 || sum == -3 {
-			leafNodes++
-			return -sum / 3 * (WIN - ply)
-		}
-	}
-
-	boardValue += bd[x][y] * scores[x][y]
-
-	if ply == maxDepth {
-		leafNodes++
-		return boardValue
-	}
-
-	switch nextPlayer {
+	switch player {
 	case MAXIMIZER:
-		value = LOSS
-		for _, cell := range orderedCells {
-			i, j := cell[0], cell[1]
-			marker := bd[i][j]
-			if marker == UNSET {
-				bd[i][j] = MAXIMIZER
-				n := alphaBeta(bd, ply+1, MINIMIZER, alpha, beta, i, j, boardValue)
-				bd[i][j] = UNSET
-				if n > value {
-					value = n
-				}
-				if value > alpha {
-					alpha = value
-				}
-				if beta <= alpha {
-					break
+		value = 2 * LOSS // Possible to score less than LOSS
+		for i, row := range bd {
+			for j, marker := range row {
+				if marker == UNSET {
+					bd[i][j] = MAXIMIZER
+					stopRecursing, delta := deltaValue(bd, ply, x, y)
+					if stopRecursing {
+						bd[i][j] = UNSET
+						leafNodes++
+						return delta
+					}
+					n := alphaBeta(bd, ply+1, MINIMIZER, alpha, beta, i, j, boardValue+delta)
+					bd[i][j] = UNSET
+					if n > value {
+						value = n
+					}
+					if value > alpha {
+						alpha = value
+					}
+					if beta <= alpha {
+						return value
+					}
 				}
 			}
 		}
-		leafNodes++
-		return value
 	case MINIMIZER:
-		value = WIN
-		for _, cell := range orderedCells {
-			i, j := cell[0], cell[1]
-			marker := bd[i][j]
-			if marker == UNSET {
-				bd[i][j] = MINIMIZER
-				n := alphaBeta(bd, ply+1, MAXIMIZER, alpha, beta, i, j, boardValue)
-				bd[i][j] = UNSET
-				if n < value {
-					value = n
-				}
-				if value < beta {
-					beta = value
-				}
-				if beta <= alpha {
-					break
+		value = 2 * WIN // You can score greater than WIN
+		for i, row := range bd {
+			for j, marker := range row {
+				if marker == UNSET {
+					bd[i][j] = player
+					stopRecursing, delta := deltaValue(bd, ply, x, y)
+					if stopRecursing {
+						bd[i][j] = UNSET
+						leafNodes++
+						return delta
+					}
+					n := alphaBeta(bd, ply+1, -player, alpha, beta, i, j, boardValue+delta)
+					bd[i][j] = UNSET
+					if n < value {
+						value = n
+					}
+					if value < beta {
+						beta = value
+					}
+					if beta <= alpha {
+						return value
+					}
 				}
 			}
 		}
-		leafNodes++
-		return value
 	}
 
-	leafNodes++
 	return value
+}
+
+func printBoard(bd *Board) {
+	fmt.Printf("   0 1 2 3 4\n")
+	for i, row := range bd {
+		fmt.Printf("%d  ", i)
+		for _, v := range row {
+			var marker string
+			switch v {
+			case MAXIMIZER:
+				marker = "X"
+			case MINIMIZER:
+				marker = "O"
+			case UNSET:
+				marker = "_"
+			}
+			fmt.Printf("%s ", marker)
+		}
+		fmt.Printf("\n")
+	}
 }
 
 var losingTriplets [][][]int = [][][]int{
