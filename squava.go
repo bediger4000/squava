@@ -166,10 +166,11 @@ OUTER:
 		for j, mark := range row {
 			if mark == UNSET {
 				bd[i][j] = MAXIMIZER
-				_, delta := deltaValue(bd, 0, i, j)
-				value := alphaBeta(bd, 1, MINIMIZER, alpha, beta, i, j, delta)
+				stopRecursing, value := deltaValue(bd, 0, i, j)
+				if !stopRecursing {
+					value = alphaBeta(bd, 1, MINIMIZER, alpha, beta, i, j, value)
+				}
 				bd[i][j] = UNSET
-				// fmt.Printf("	<%d,%d>  %d\n", i, j, val)
 				moves.setMove(i, j, value)
 				if value > alpha {
 					alpha = value
@@ -276,13 +277,12 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 				if marker == UNSET {
 					bd[i][j] = MAXIMIZER
 					stopRecursing, delta := deltaValue(bd, ply, x, y)
-					boardValue += delta
 					if stopRecursing {
 						bd[i][j] = UNSET
 						leafNodeCount++
-						return boardValue
+						return delta
 					}
-					n := alphaBeta(bd, ply+1, MINIMIZER, alpha, beta, i, j, boardValue)
+					n := alphaBeta(bd, ply+1, MINIMIZER, alpha, beta, i, j, boardValue + delta)
 					bd[i][j] = UNSET
 					if n > value {
 						value = n
@@ -303,13 +303,12 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 				if marker == UNSET {
 					bd[i][j] = player
 					stopRecursing, delta := deltaValue(bd, ply, x, y)
-					boardValue += delta
 					if stopRecursing {
 						bd[i][j] = UNSET
 						leafNodeCount++
-						return boardValue
+						return delta
 					}
-					n := alphaBeta(bd, ply+1, -player, alpha, beta, i, j, boardValue)
+					n := alphaBeta(bd, ply+1, -player, alpha, beta, i, j, boardValue + delta)
 					bd[i][j] = UNSET
 					if n < value {
 						value = n
