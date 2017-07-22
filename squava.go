@@ -158,26 +158,16 @@ func chooseMove(bd *Board, deterministic bool) (xcoord int, ycoord int, value in
 
 	var moves = MoveKeeper{next: 0, max: 2 * LOSS}
 
-	alpha := 2 * LOSS
-	beta := 2 * WIN
-
-OUTER:
 	for i, row := range bd {
 		for j, mark := range row {
 			if mark == UNSET {
 				bd[i][j] = MAXIMIZER
 				stopRecursing, value := deltaValue(bd, 0, i, j)
 				if !stopRecursing {
-					value = alphaBeta(bd, 1, MINIMIZER, alpha, beta, i, j, value)
+					value = alphaBeta(bd, 1, MINIMIZER, 2*LOSS, 2*WIN, i, j, value)
 				}
 				bd[i][j] = UNSET
 				moves.setMove(i, j, value)
-				if value > alpha {
-					alpha = value
-				}
-				if beta <= alpha {
-					break OUTER
-				}
 			}
 		}
 	}
