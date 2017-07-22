@@ -87,9 +87,9 @@ func main() {
 		bestValue = 2*WIN
 	}
 
-	for i := 0; i < 5; i++ {
-		for j := 0; j < 5; j++ {
-			if bd[i][j] == UNSET {
+	for i, row := range bd {
+		for j, mark := range row {
+			if mark == UNSET {
 				bd[i][j] = nextPlayer
 				stopRecursing, val := deltaValue(&bd, 0, i, j)
 				leafNodes = 0
