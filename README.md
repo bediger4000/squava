@@ -248,7 +248,10 @@ order them differently:
     4  _ _ _ _ _ 
     ...
 
-
+You can specify what the first player is (`-1 x`) and what the second
+player is (`-2 x`). The 3 options are 'A' for an alpha/beta minimaxing
+player, 'N' for a Negascout minimaxing player, and 'B' for an alpha/beta
+minimaxing player that has an opening for its first 3 moves
 
 ## JavaScript Program
 
