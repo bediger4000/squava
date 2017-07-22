@@ -79,27 +79,18 @@ func (p *AlphaBeta) ChooseMove() (xcoord int, ycoord int, value int, leafcount i
 
 	moves := movekeeper.New(2*LOSS, p.deterministic)
 
-	alpha := 2 * LOSS
-	beta := 2 * WIN
-
 	p.leafNodeCount = 0
 
-OUTER:
 	for i, row := range p.bd {
 		for j, mark := range row {
 			if mark == UNSET {
 				p.bd[i][j] = MAXIMIZER
-				_, delta := p.deltaValue(0, i, j)
-				value := p.alphaBeta(1, MINIMIZER, alpha, beta, i, j, delta)
+				stop, value := p.deltaValue(0, i, j)
+				if !stop {
+					value = p.alphaBeta(1, MINIMIZER, 2*LOSS, 2*WIN, i, j, value)
+				}
 				p.bd[i][j] = UNSET
-				// fmt.Printf("	<%d,%d>  %d\n", i, j, val)
 				moves.SetMove(i, j, value)
-				if value > alpha {
-					alpha = value
-				}
-				if beta <= alpha {
-					break OUTER
-				}
 			}
 		}
 	}
@@ -174,7 +165,7 @@ func (p *AlphaBeta) deltaValue(ply int, x, y int) (stopRecursing bool, value int
 		sum += p.bd[triplet[2][0]][triplet[2][1]]
 
 		if sum == 3 || sum == -3 {
-			return true, sum / 3 * (LOSS - ply)
+			return true, sum / 3 * (LOSS + ply)
 		}
 	}
 
@@ -203,13 +194,12 @@ func (p *AlphaBeta) alphaBeta(ply int, player int, alpha int, beta int, x int, y
 				if marker == UNSET {
 					p.bd[i][j] = MAXIMIZER
 					stopRecursing, delta := p.deltaValue(ply, x, y)
-					boardValue += delta
 					if stopRecursing {
 						p.bd[i][j] = UNSET
 						p.leafNodeCount++
-						return boardValue
+						return delta
 					}
-					n := p.alphaBeta(ply+1, MINIMIZER, alpha, beta, i, j, boardValue)
+					n := p.alphaBeta(ply+1, MINIMIZER, alpha, beta, i, j, boardValue+delta)
 					p.bd[i][j] = UNSET
 					if n > value {
 						value = n
@@ -230,13 +220,12 @@ func (p *AlphaBeta) alphaBeta(ply int, player int, alpha int, beta int, x int, y
 				if marker == UNSET {
 					p.bd[i][j] = player
 					stopRecursing, delta := p.deltaValue(ply, x, y)
-					boardValue += delta
 					if stopRecursing {
 						p.bd[i][j] = UNSET
 						p.leafNodeCount++
-						return boardValue
+						return delta
 					}
-					n := p.alphaBeta(ply+1, -player, alpha, beta, i, j, boardValue)
+					n := p.alphaBeta(ply+1, -player, alpha, beta, i, j, boardValue+delta)
 					p.bd[i][j] = UNSET
 					if n < value {
 						value = n
