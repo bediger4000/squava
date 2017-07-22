@@ -2,6 +2,7 @@ package main
 
 import (
 	"alphabeta"
+	"abbook"
 	"flag"
 	"fmt"
 	"math/rand"
@@ -50,6 +51,9 @@ func main() {
 	case "N":
 		first = negascout.New(*deterministic, *maxDepthPtr)
 		firstName = "NegaScout"
+	case "B":
+		first = abbook.New(*deterministic, *maxDepthPtr)
+		firstName = "A/B+Book"
 	}
 
 	switch *secondType {
@@ -59,6 +63,9 @@ func main() {
 	case "N":
 		second = negascout.New(*deterministic, *maxDepthPtr)
 		secondName = "NegaScout"
+	case "B":
+		second = abbook.New(*deterministic, *maxDepthPtr)
+		secondName = "A/B+Book"
 	}
 
 	first.SetScores(*randomizeScores)
