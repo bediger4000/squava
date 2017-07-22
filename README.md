@@ -151,8 +151,21 @@ a [NegaScout](https://www.cs.unm.edu/~aaron/downloads/qian_search.pdf) search.
 
 `sns` and `squava` behave mostly identically.
 
-    ./squava
+    $ ./squava
     Your move:
+
+to have the computer use a "book" opening:
+
+    $ ./squava -B
+    Using opening book
+    My move: 1 1
+       0 1 2 3 4
+    0  _ _ _ _ _ 
+    1  _ X _ _ _ 
+    2  _ _ _ _ _ 
+    3  _ _ _ _ _ 
+    4  _ _ _ _ _ 
+
 
 You enter 2 digits in the range 0 to 4, with a space or spaces between them.
 The computer ponders, announces its move, and displays the board. Human plays
