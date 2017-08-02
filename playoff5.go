@@ -3,6 +3,7 @@ package main
 import (
 	"alphabeta"
 	"abbook"
+	"abgeo"
 	"flag"
 	"fmt"
 	"math/rand"
@@ -54,6 +55,9 @@ func main() {
 	case "B":
 		first = abbook.New(*deterministic, *maxDepthPtr)
 		firstName = "A/B+Book"
+	case "G":
+		first = abgeo.New(*deterministic, *maxDepthPtr)
+		firstName = "A/B+Avoid"
 	}
 
 	switch *secondType {
@@ -66,6 +70,9 @@ func main() {
 	case "B":
 		second = abbook.New(*deterministic, *maxDepthPtr)
 		secondName = "A/B+Book"
+	case "G":
+		second = abgeo.New(*deterministic, *maxDepthPtr)
+		secondName = "A/B+Avoid"
 	}
 
 	first.SetScores(*randomizeScores)
