@@ -26,6 +26,8 @@ type AlphaBetaBook struct {
 	state          int
 	c_x            int
 	c_y            int
+    firstX         int
+    firstY         int
 	bookInProgress bool
 }
 
@@ -86,8 +88,15 @@ func (p *AlphaBetaBook) SetDepth(moveCounter int) {
 func (p *AlphaBetaBook) ChooseMove() (xcoord int, ycoord int, value int, leafcount int) {
 
 	if p.bookInProgress {
-		p.bookStart()
-		return p.c_x, p.c_y, 0, 0
+		if (p.moveCount % 2) == 0 {
+			p.bookStart()
+		} else {
+			p.bookDefend()
+		}
+		if p.c_x != -1 && p.c_y != -1 {
+			p.MakeMove(p.c_x, p.c_y, MAXIMIZER)
+			return p.c_x, p.c_y, 0, 0
+		}
 	}
 
 	moves := movekeeper.New(2*LOSS, p.deterministic)
@@ -425,6 +434,8 @@ const (
 	CORNER
 	OTHERCORNER
 	OTHERDIAGONAL
+    BLOCKDIAG1
+    BLOCKDIAG2
 	LAST
 )
 
@@ -433,6 +444,67 @@ var firstMoves [4][2]int = [4][2]int{
 	{0, 1},
 	{1, 0},
 	{1, 1},
+}
+
+func (p *AlphaBetaBook) bookDefend() {
+
+	lastx := -1
+	lasty := -1
+
+	switch p.state {
+	case FIRST:
+		p.state = BLOCKDIAG1
+		OUTER: for i, row := range p.bd {
+			for j, mark := range row {
+				if mark != 0 {
+					lastx = i
+					lasty = j
+					break OUTER
+				}
+			}
+		}
+		p.firstX = lastx
+		p.firstY = lasty
+		// lastx, lasty - coords of move to respond to
+		for i := -3; i < 4; i += 6 {
+			for j := -3; j < 4; j += 6 {
+				a := lastx + i
+				b := lasty + j
+				if a >= 0 && a <= 4 && b >= 0 && b <= 4 {
+					// Since <lastx, lasty> have an X, <a,b> must be empty
+					p.c_x = a
+					p.c_y = b
+					return
+				}
+			}
+		}
+	case BLOCKDIAG1:
+		p.state = LAST
+		p.bookInProgress = false
+		OUTER2: for i, row := range p.bd {
+			for j, mark := range row {
+				if !(i == p.firstX && j == p.firstY) && mark == MINIMIZER {
+					lastx = i
+					lasty = j
+					break OUTER2
+				}
+			}
+		}
+		// lastx, lasty - coords of move to respond to
+		for i := -3; i < 4; i += 6 {
+			for j := -3; j < 4; j += 6 {
+				a := lastx + i
+				b := lasty + j
+				if a >= 0 && a <= 4 && b >= 0 && b <= 4 {
+					if p.bd[a][b] == 0 {
+						p.c_x = a
+						p.c_y = b
+						return
+					}
+				}
+			}
+		}
+	}
 }
 
 func (p *AlphaBetaBook) bookStart() {
@@ -445,15 +517,12 @@ func (p *AlphaBetaBook) bookStart() {
 		case FIRST:
 			c := firstMoves[rand.Intn(4)]
 			p.c_x, p.c_y = c[0], c[1]
-			p.bd[p.c_x][p.c_y] = MAXIMIZER
 			p.state = DIAGONAL
 		case DIAGONAL:
 			p_x, p_y := p.c_x+3, p.c_y+3
 			if p.bd[p_x][p_y] == UNSET {
 				p.c_x += 3
 				p.c_y += 3
-				p.bd[p.c_x][p.c_y] = MAXIMIZER
-				p.moveCount++
 				p.state = CORNER
 			} else {
 				p.state = OTHERCORNER
@@ -463,14 +532,10 @@ func (p *AlphaBetaBook) bookStart() {
 			p_x, p_y := p.c_x-3, p.c_y
 			if p.bd[p_x][p_y] == UNSET {
 				p.c_x -= 3
-				p.bd[p.c_x][p.c_y] = MAXIMIZER
-				p.moveCount++
 			} else {
 				p_x, p_y = p.c_x, p.c_y-3
 				if p.bd[p_x][p_y] == UNSET {
 					p.c_y -= 3
-					p.bd[p.c_x][p.c_y] = MAXIMIZER
-					p.moveCount++
 				}
 			}
 			p.state = LAST
@@ -480,8 +545,6 @@ func (p *AlphaBetaBook) bookStart() {
 			p_x, p_y := p.c_x, p.c_y+3
 			if p.bd[p_x][p_y] == UNSET {
 				p.c_y += 3
-				p.bd[p.c_x][p.c_y] = MAXIMIZER
-				p.moveCount++
 				p.state = OTHERDIAGONAL
 			} else {
 				fmt.Printf("Unreachable state in OTHERCORNER\n")
@@ -493,8 +556,9 @@ func (p *AlphaBetaBook) bookStart() {
 			if p.bd[p_x][p_y] == UNSET {
 				p.c_x += 3
 				p.c_y -= 3
-				p.bd[p.c_x][p.c_y] = MAXIMIZER
-				p.moveCount++
+			} else {
+				p.c_x = -1
+				p.c_y = -1
 			}
 			p.state = LAST
 			p.bookInProgress = false
