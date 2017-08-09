@@ -69,9 +69,14 @@ func main() {
 
 	if *useBook {
 		fmt.Printf("Using opening book\n")
-		humanFirst = false
 		*firstMovePtr = ""
-		moveCounter += bookStart(&bd)
+		if humanFirst {
+			l, m := readMove(&bd, *printBoardPtr)
+			bd[l][m] = MINIMIZER
+			moveCounter = 1 + bookDefend(&bd, l, m)
+		} else {
+			moveCounter += bookStart(&bd)
+		}
 	}
 
 	if *firstMovePtr != "" {
@@ -272,7 +277,7 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 						leafNodeCount++
 						return delta
 					}
-					n := alphaBeta(bd, ply+1, MINIMIZER, alpha, beta, i, j, boardValue + delta)
+					n := alphaBeta(bd, ply+1, MINIMIZER, alpha, beta, i, j, boardValue+delta)
 					bd[i][j] = UNSET
 					if n > value {
 						value = n
@@ -298,7 +303,7 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 						leafNodeCount++
 						return delta
 					}
-					n := alphaBeta(bd, ply+1, -player, alpha, beta, i, j, boardValue + delta)
+					n := alphaBeta(bd, ply+1, -player, alpha, beta, i, j, boardValue+delta)
 					bd[i][j] = UNSET
 					if n < value {
 						value = n
@@ -338,84 +343,84 @@ func printBoard(bd *Board) {
 }
 
 var losingTriplets [][][]int = [][][]int{
-	[][]int{[]int{0, 0}, []int{1, 0}, []int{2, 0}},
-	[][]int{[]int{0, 0}, []int{0, 1}, []int{0, 2}},
-	[][]int{[]int{0, 0}, []int{1, 1}, []int{2, 2}},
-	[][]int{[]int{1, 0}, []int{2, 0}, []int{3, 0}},
-	[][]int{[]int{1, 0}, []int{1, 1}, []int{1, 2}},
-	[][]int{[]int{1, 0}, []int{2, 1}, []int{3, 2}},
-	[][]int{[]int{2, 0}, []int{3, 0}, []int{4, 0}},
-	[][]int{[]int{2, 0}, []int{2, 1}, []int{2, 2}},
-	[][]int{[]int{2, 0}, []int{1, 1}, []int{0, 2}},
-	[][]int{[]int{2, 0}, []int{3, 1}, []int{4, 2}},
-	[][]int{[]int{3, 0}, []int{3, 1}, []int{3, 2}},
-	[][]int{[]int{3, 0}, []int{2, 1}, []int{1, 2}},
-	[][]int{[]int{4, 0}, []int{4, 1}, []int{4, 2}},
-	[][]int{[]int{4, 0}, []int{3, 1}, []int{2, 2}},
-	[][]int{[]int{0, 1}, []int{1, 1}, []int{2, 1}},
-	[][]int{[]int{0, 1}, []int{0, 2}, []int{0, 3}},
-	[][]int{[]int{0, 1}, []int{1, 2}, []int{2, 3}},
-	[][]int{[]int{1, 1}, []int{2, 1}, []int{3, 1}},
-	[][]int{[]int{1, 1}, []int{1, 2}, []int{1, 3}},
-	[][]int{[]int{1, 1}, []int{2, 2}, []int{3, 3}},
-	[][]int{[]int{2, 1}, []int{3, 1}, []int{4, 1}},
-	[][]int{[]int{2, 1}, []int{2, 2}, []int{2, 3}},
-	[][]int{[]int{2, 1}, []int{1, 2}, []int{0, 3}},
-	[][]int{[]int{2, 1}, []int{3, 2}, []int{4, 3}},
-	[][]int{[]int{3, 1}, []int{3, 2}, []int{3, 3}},
-	[][]int{[]int{3, 1}, []int{2, 2}, []int{1, 3}},
-	[][]int{[]int{4, 1}, []int{4, 2}, []int{4, 3}},
-	[][]int{[]int{4, 1}, []int{3, 2}, []int{2, 3}},
-	[][]int{[]int{0, 2}, []int{1, 2}, []int{2, 2}},
-	[][]int{[]int{0, 2}, []int{0, 3}, []int{0, 4}},
-	[][]int{[]int{0, 2}, []int{1, 3}, []int{2, 4}},
-	[][]int{[]int{1, 2}, []int{2, 2}, []int{3, 2}},
-	[][]int{[]int{1, 2}, []int{1, 3}, []int{1, 4}},
-	[][]int{[]int{1, 2}, []int{2, 3}, []int{3, 4}},
-	[][]int{[]int{2, 2}, []int{3, 2}, []int{4, 2}},
-	[][]int{[]int{2, 2}, []int{2, 3}, []int{2, 4}},
-	[][]int{[]int{2, 2}, []int{1, 3}, []int{0, 4}},
-	[][]int{[]int{2, 2}, []int{3, 3}, []int{4, 4}},
-	[][]int{[]int{3, 2}, []int{3, 3}, []int{3, 4}},
-	[][]int{[]int{3, 2}, []int{2, 3}, []int{1, 4}},
-	[][]int{[]int{4, 2}, []int{4, 3}, []int{4, 4}},
-	[][]int{[]int{4, 2}, []int{3, 3}, []int{2, 4}},
-	[][]int{[]int{0, 3}, []int{1, 3}, []int{2, 3}},
-	[][]int{[]int{1, 3}, []int{2, 3}, []int{3, 3}},
-	[][]int{[]int{2, 3}, []int{3, 3}, []int{4, 3}},
-	[][]int{[]int{0, 4}, []int{1, 4}, []int{2, 4}},
-	[][]int{[]int{1, 4}, []int{2, 4}, []int{3, 4}},
-	[][]int{[]int{2, 4}, []int{3, 4}, []int{4, 4}},
+	{{0, 0}, {1, 0}, {2, 0}},
+	{{0, 0}, {0, 1}, {0, 2}},
+	{{0, 0}, {1, 1}, {2, 2}},
+	{{1, 0}, {2, 0}, {3, 0}},
+	{{1, 0}, {1, 1}, {1, 2}},
+	{{1, 0}, {2, 1}, {3, 2}},
+	{{2, 0}, {3, 0}, {4, 0}},
+	{{2, 0}, {2, 1}, {2, 2}},
+	{{2, 0}, {1, 1}, {0, 2}},
+	{{2, 0}, {3, 1}, {4, 2}},
+	{{3, 0}, {3, 1}, {3, 2}},
+	{{3, 0}, {2, 1}, {1, 2}},
+	{{4, 0}, {4, 1}, {4, 2}},
+	{{4, 0}, {3, 1}, {2, 2}},
+	{{0, 1}, {1, 1}, {2, 1}},
+	{{0, 1}, {0, 2}, {0, 3}},
+	{{0, 1}, {1, 2}, {2, 3}},
+	{{1, 1}, {2, 1}, {3, 1}},
+	{{1, 1}, {1, 2}, {1, 3}},
+	{{1, 1}, {2, 2}, {3, 3}},
+	{{2, 1}, {3, 1}, {4, 1}},
+	{{2, 1}, {2, 2}, {2, 3}},
+	{{2, 1}, {1, 2}, {0, 3}},
+	{{2, 1}, {3, 2}, {4, 3}},
+	{{3, 1}, {3, 2}, {3, 3}},
+	{{3, 1}, {2, 2}, {1, 3}},
+	{{4, 1}, {4, 2}, {4, 3}},
+	{{4, 1}, {3, 2}, {2, 3}},
+	{{0, 2}, {1, 2}, {2, 2}},
+	{{0, 2}, {0, 3}, {0, 4}},
+	{{0, 2}, {1, 3}, {2, 4}},
+	{{1, 2}, {2, 2}, {3, 2}},
+	{{1, 2}, {1, 3}, {1, 4}},
+	{{1, 2}, {2, 3}, {3, 4}},
+	{{2, 2}, {3, 2}, {4, 2}},
+	{{2, 2}, {2, 3}, {2, 4}},
+	{{2, 2}, {1, 3}, {0, 4}},
+	{{2, 2}, {3, 3}, {4, 4}},
+	{{3, 2}, {3, 3}, {3, 4}},
+	{{3, 2}, {2, 3}, {1, 4}},
+	{{4, 2}, {4, 3}, {4, 4}},
+	{{4, 2}, {3, 3}, {2, 4}},
+	{{0, 3}, {1, 3}, {2, 3}},
+	{{1, 3}, {2, 3}, {3, 3}},
+	{{2, 3}, {3, 3}, {4, 3}},
+	{{0, 4}, {1, 4}, {2, 4}},
+	{{1, 4}, {2, 4}, {3, 4}},
+	{{2, 4}, {3, 4}, {4, 4}},
 }
 var winningQuads [][][]int = [][][]int{
-	[][]int{[]int{0, 0}, []int{1, 0}, []int{2, 0}, []int{3, 0}},
-	[][]int{[]int{0, 0}, []int{0, 1}, []int{0, 2}, []int{0, 3}},
-	[][]int{[]int{0, 0}, []int{1, 1}, []int{2, 2}, []int{3, 3}},
-	[][]int{[]int{0, 1}, []int{1, 1}, []int{2, 1}, []int{3, 1}},
-	[][]int{[]int{0, 1}, []int{0, 2}, []int{0, 3}, []int{0, 4}},
-	[][]int{[]int{0, 1}, []int{1, 2}, []int{2, 3}, []int{3, 4}},
-	[][]int{[]int{0, 2}, []int{1, 2}, []int{2, 2}, []int{3, 2}},
-	[][]int{[]int{0, 3}, []int{1, 3}, []int{2, 3}, []int{3, 3}},
-	[][]int{[]int{0, 4}, []int{1, 4}, []int{2, 4}, []int{3, 4}},
-	[][]int{[]int{1, 0}, []int{2, 0}, []int{3, 0}, []int{4, 0}},
-	[][]int{[]int{1, 0}, []int{1, 1}, []int{1, 2}, []int{1, 3}},
-	[][]int{[]int{1, 0}, []int{2, 1}, []int{3, 2}, []int{4, 3}},
-	[][]int{[]int{1, 1}, []int{2, 1}, []int{3, 1}, []int{4, 1}},
-	[][]int{[]int{1, 1}, []int{1, 2}, []int{1, 3}, []int{1, 4}},
-	[][]int{[]int{1, 1}, []int{2, 2}, []int{3, 3}, []int{4, 4}},
-	[][]int{[]int{1, 2}, []int{2, 2}, []int{3, 2}, []int{4, 2}},
-	[][]int{[]int{1, 3}, []int{2, 3}, []int{3, 3}, []int{4, 3}},
-	[][]int{[]int{1, 4}, []int{2, 4}, []int{3, 4}, []int{4, 4}},
-	[][]int{[]int{2, 0}, []int{2, 1}, []int{2, 2}, []int{2, 3}},
-	[][]int{[]int{2, 1}, []int{2, 2}, []int{2, 3}, []int{2, 4}},
-	[][]int{[]int{3, 0}, []int{3, 1}, []int{3, 2}, []int{3, 3}},
-	[][]int{[]int{3, 0}, []int{2, 1}, []int{1, 2}, []int{0, 3}},
-	[][]int{[]int{3, 1}, []int{3, 2}, []int{3, 3}, []int{3, 4}},
-	[][]int{[]int{3, 1}, []int{2, 2}, []int{1, 3}, []int{0, 4}},
-	[][]int{[]int{4, 0}, []int{4, 1}, []int{4, 2}, []int{4, 3}},
-	[][]int{[]int{4, 0}, []int{3, 1}, []int{2, 2}, []int{1, 3}},
-	[][]int{[]int{4, 1}, []int{4, 2}, []int{4, 3}, []int{4, 4}},
-	[][]int{[]int{4, 1}, []int{3, 2}, []int{2, 3}, []int{1, 4}},
+	{{0, 0}, {1, 0}, {2, 0}, {3, 0}},
+	{{0, 0}, {0, 1}, {0, 2}, {0, 3}},
+	{{0, 0}, {1, 1}, {2, 2}, {3, 3}},
+	{{0, 1}, {1, 1}, {2, 1}, {3, 1}},
+	{{0, 1}, {0, 2}, {0, 3}, {0, 4}},
+	{{0, 1}, {1, 2}, {2, 3}, {3, 4}},
+	{{0, 2}, {1, 2}, {2, 2}, {3, 2}},
+	{{0, 3}, {1, 3}, {2, 3}, {3, 3}},
+	{{0, 4}, {1, 4}, {2, 4}, {3, 4}},
+	{{1, 0}, {2, 0}, {3, 0}, {4, 0}},
+	{{1, 0}, {1, 1}, {1, 2}, {1, 3}},
+	{{1, 0}, {2, 1}, {3, 2}, {4, 3}},
+	{{1, 1}, {2, 1}, {3, 1}, {4, 1}},
+	{{1, 1}, {1, 2}, {1, 3}, {1, 4}},
+	{{1, 1}, {2, 2}, {3, 3}, {4, 4}},
+	{{1, 2}, {2, 2}, {3, 2}, {4, 2}},
+	{{1, 3}, {2, 3}, {3, 3}, {4, 3}},
+	{{1, 4}, {2, 4}, {3, 4}, {4, 4}},
+	{{2, 0}, {2, 1}, {2, 2}, {2, 3}},
+	{{2, 1}, {2, 2}, {2, 3}, {2, 4}},
+	{{3, 0}, {3, 1}, {3, 2}, {3, 3}},
+	{{3, 0}, {2, 1}, {1, 2}, {0, 3}},
+	{{3, 1}, {3, 2}, {3, 3}, {3, 4}},
+	{{3, 1}, {2, 2}, {1, 3}, {0, 4}},
+	{{4, 0}, {4, 1}, {4, 2}, {4, 3}},
+	{{4, 0}, {3, 1}, {2, 2}, {1, 3}},
+	{{4, 1}, {4, 2}, {4, 3}, {4, 4}},
+	{{4, 1}, {3, 2}, {2, 3}, {1, 4}},
 }
 
 var scores [5][5]int
@@ -454,17 +459,17 @@ func setScores(randomize bool) {
 	if randomize {
 		var vals [11]int = [11]int{-5, -4, -3 - 2, -1, 0, 1, 2, 3, 4, 5}
 		for i, row := range scores {
-			for j, _ := range row {
+			for j := range row {
 				scores[i][j] = vals[rand.Intn(11)]
 			}
 		}
 	} else {
 		scores = [5][5]int{
-			[5]int{3, 3, 0, 3, 3},
-			[5]int{3, 4, 1, 4, 3},
-			[5]int{0, 1, 0, 1, 0},
-			[5]int{3, 4, 1, 4, 3},
-			[5]int{3, 3, 0, 3, 3},
+			{3, 3, 0, 3, 3},
+			{3, 4, 1, 4, 3},
+			{0, 1, 0, 1, 0},
+			{3, 4, 1, 4, 3},
+			{3, 3, 0, 3, 3},
 		}
 	}
 }
@@ -491,10 +496,79 @@ const (
 )
 
 var firstMoves [4][2]int = [4][2]int{
-	[2]int{0, 0},
-	[2]int{0, 1},
-	[2]int{1, 0},
-	[2]int{1, 1},
+	{0, 0},
+	{0, 1},
+	{1, 0},
+	{1, 1},
+}
+
+func bookDefend(bd *Board, firstX int, firstY int) int {
+	state := FIRST
+	moveCount := 0
+
+	var c_x, c_y int
+
+	for state != LAST {
+		switch state {
+		case FIRST:
+			// Find the diagonal, and block it
+		OUTERFIRST:
+			for i := -3; i < 4; i += 6 {
+				for j := -3; j < 4; j += 6 {
+					a := firstX + i
+					b := firstY + j
+					if a >= 0 && a <= 4 && b >= 0 && b <= 4 {
+						// Since <firstX, firstY> have an X, <a,b> must be empty
+						c_x = a
+						c_y = b
+						bd[c_x][c_y] = MAXIMIZER
+						moveCount++
+						break OUTERFIRST
+					}
+				}
+			}
+			state = DIAGONAL
+
+			fmt.Printf("My move: %d %d\n", c_x, c_y)
+			printBoard(bd)
+			l, m := readMove(bd, true)
+			bd[l][m] = MINIMIZER
+			moveCount++
+
+		case DIAGONAL:
+			state = LAST
+			var lastx, lasty int
+		OUTERDIAGONAL:
+			for i, row := range bd {
+				for j, mark := range row {
+					if !(i == firstX && j == firstY) && mark == MINIMIZER {
+						lastx = i
+						lasty = j
+						break OUTERDIAGONAL
+					}
+				}
+			}
+			// lastx, lasty - coords of move to respond to
+		FOUNDMOVE:
+			for i := -3; i < 4; i += 6 {
+				for j := -3; j < 4; j += 6 {
+					a, b := lastx+i, lasty+j
+					if a >= 0 && a <= 4 && b >= 0 && b <= 4 {
+						if bd[a][b] == UNSET {
+							bd[a][b] = MAXIMIZER
+							moveCount++
+							c_x, c_y = a, b
+							break FOUNDMOVE
+						}
+					}
+				}
+			}
+			fmt.Printf("My move: %d %d\n", c_x, c_y)
+			printBoard(bd)
+		}
+	}
+
+	return moveCount
 }
 
 func bookStart(bd *Board) int {
@@ -561,7 +635,7 @@ func bookStart(bd *Board) int {
 			}
 			state = LAST
 		}
-		if (moveCount%2) == 1 {
+		if (moveCount % 2) == 1 {
 			fmt.Printf("My move: %d %d\n", c_x, c_y)
 			printBoard(bd)
 			l, m := readMove(bd, true)
