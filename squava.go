@@ -37,7 +37,7 @@ func main() {
 	printBoardPtr := flag.Bool("n", false, "Don't print board, just emit moves")
 	firstMovePtr := flag.String("M", "", "Tell computer to make this first move (x,y)")
 	randomizeScores := flag.Bool("r", false, "Randomize bias scores")
-	useBook := flag.Bool("B", false, "Use book start")
+	useBook := flag.Bool("B", false, "Use book start or defense")
 	flag.Parse()
 
 	*printBoardPtr = !*printBoardPtr
