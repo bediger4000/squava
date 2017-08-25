@@ -9,8 +9,11 @@ import (
 	"time"
 )
 
+// Board is internal representation of a 5x5 tictactoe style
+// game board.
 type Board [5][5]int
 
+// Manifest constants used repeatedly.
 const (
 	WIN       = 10000
 	LOSS      = -10000
@@ -59,7 +62,7 @@ func main() {
 
 	setScores(*randomizeScores)
 
-	var humanFirst bool = *humanFirstPtr
+	humanFirst := *humanFirstPtr
 	if *computerFirstPtr {
 		humanFirst = false
 	}
@@ -88,7 +91,7 @@ func main() {
 		printBoard(&bd)
 	}
 
-	var endOfGame bool = false
+	endOfGame := false
 
 	for !endOfGame {
 		setDepth(moveCounter, *maxDepthPtr)
@@ -161,7 +164,7 @@ func setDepth(moveCounter int, endGameDepth int) {
 // Choose computer's next move: return x,y coords of move and its score.
 func chooseMove(bd *Board, deterministic bool) (xcoord int, ycoord int, value int) {
 
-	var moves = MoveKeeper{next: 0, max: 2 * LOSS}
+	var moves = moveKeeper{next: 0, max: 2 * LOSS}
 
 	for i, row := range bd {
 		for j, mark := range row {
@@ -203,18 +206,6 @@ func findWinner(bd *Board) int {
 	}
 
 	return 0
-}
-
-// It turns out that you only have to look at
-// the 4-in-a-rows that contain these 9 cells
-// to check every 4-in-a-row. Similarly, you
-// only need to check these 9 cells to check
-// all the losing 3-in-a-row combos. You don't
-// have to look at each and every cell.
-var checkableCells [9][2]int = [9][2]int{
-	{0, 2}, {1, 2}, {2, 0},
-	{2, 1}, {2, 2}, {2, 3},
-	{2, 4}, {3, 2}, {4, 2},
 }
 
 // Calculates and returns the value of the move (x,y)
@@ -457,7 +448,7 @@ func readMove(bd *Board, print bool) (x, y int) {
 
 func setScores(randomize bool) {
 	if randomize {
-		var vals [11]int = [11]int{-5, -4, -3 - 2, -1, 0, 1, 2, 3, 4, 5}
+		vals := [11]int{-5, -4, -3 - 2, -1, 0, 1, 2, 3, 4, 5}
 		for i, row := range scores {
 			for j := range row {
 				scores[i][j] = vals[rand.Intn(11)]
@@ -486,6 +477,8 @@ func setScores(randomize bool) {
 // and the opposite corner causes it to bail out of
 // the book early.
 
+// States for book offense/defense openings.
+// Openings implemented as state machines.
 const (
 	FIRST = iota
 	DIAGONAL
@@ -506,7 +499,7 @@ func bookDefend(bd *Board, firstX int, firstY int) int {
 	state := FIRST
 	moveCount := 0
 
-	var c_x, c_y int
+	var cX, cY int
 
 	for state != LAST {
 		switch state {
@@ -519,9 +512,9 @@ func bookDefend(bd *Board, firstX int, firstY int) int {
 					b := firstY + j
 					if a >= 0 && a <= 4 && b >= 0 && b <= 4 {
 						// Since <firstX, firstY> have an X, <a,b> must be empty
-						c_x = a
-						c_y = b
-						bd[c_x][c_y] = MAXIMIZER
+						cX = a
+						cY = b
+						bd[cX][cY] = MAXIMIZER
 						moveCount++
 						break OUTERFIRST
 					}
@@ -529,7 +522,7 @@ func bookDefend(bd *Board, firstX int, firstY int) int {
 			}
 			state = DIAGONAL
 
-			fmt.Printf("My move: %d %d\n", c_x, c_y)
+			fmt.Printf("My move: %d %d\n", cX, cY)
 			printBoard(bd)
 			l, m := readMove(bd, true)
 			bd[l][m] = MINIMIZER
@@ -557,13 +550,13 @@ func bookDefend(bd *Board, firstX int, firstY int) int {
 						if bd[a][b] == UNSET {
 							bd[a][b] = MAXIMIZER
 							moveCount++
-							c_x, c_y = a, b
+							cX, cY = a, b
 							break FOUNDMOVE
 						}
 					}
 				}
 			}
-			fmt.Printf("My move: %d %d\n", c_x, c_y)
+			fmt.Printf("My move: %d %d\n", cX, cY)
 			printBoard(bd)
 		}
 	}
@@ -576,48 +569,48 @@ func bookStart(bd *Board) int {
 	state := FIRST
 	moveCount := 0
 
-	var c_x, c_y int
+	var cX, cY int
 
 	for state != LAST {
 		switch state {
 		case FIRST:
 			c := firstMoves[rand.Intn(4)]
-			c_x, c_y = c[0], c[1]
-			bd[c_x][c_y] = MAXIMIZER
+			cX, cY = c[0], c[1]
+			bd[cX][cY] = MAXIMIZER
 			state = DIAGONAL
 			moveCount++
 		case DIAGONAL:
-			p_x, p_y := c_x+3, c_y+3
-			if bd[p_x][p_y] == UNSET {
-				c_x += 3
-				c_y += 3
-				bd[c_x][c_y] = MAXIMIZER
+			pX, pY := cX+3, cY+3
+			if bd[pX][pY] == UNSET {
+				cX += 3
+				cY += 3
+				bd[cX][cY] = MAXIMIZER
 				moveCount++
 				state = CORNER
 			} else {
 				state = OTHERCORNER
 			}
 		case CORNER:
-			p_x, p_y := c_x-3, c_y
-			if bd[p_x][p_y] == UNSET {
-				c_x -= 3
-				bd[c_x][c_y] = MAXIMIZER
+			pX, pY := cX-3, cY
+			if bd[pX][pY] == UNSET {
+				cX -= 3
+				bd[cX][cY] = MAXIMIZER
 				moveCount++
 			} else {
-				p_x, p_y = c_x, c_y-3
-				if bd[p_x][p_y] == UNSET {
-					c_y -= 3
-					bd[c_x][c_y] = MAXIMIZER
+				pX, pY = cX, cY-3
+				if bd[pX][pY] == UNSET {
+					cY -= 3
+					bd[cX][cY] = MAXIMIZER
 					moveCount++
 				}
 			}
 			state = LAST
 		case OTHERCORNER:
 			// Didn't get desired diagonal
-			p_x, p_y := c_x, c_y+3
-			if bd[p_x][p_y] == UNSET {
-				c_y += 3
-				bd[c_x][c_y] = MAXIMIZER
+			pX, pY := cX, cY+3
+			if bd[pX][pY] == UNSET {
+				cY += 3
+				bd[cX][cY] = MAXIMIZER
 				moveCount++
 				state = OTHERDIAGONAL
 			} else {
@@ -626,17 +619,17 @@ func bookStart(bd *Board) int {
 				os.Exit(99)
 			}
 		case OTHERDIAGONAL:
-			p_x, p_y := c_x+3, c_y-3
-			if bd[p_x][p_y] == UNSET {
-				c_x += 3
-				c_y -= 3
-				bd[c_x][c_y] = MAXIMIZER
+			pX, pY := cX+3, cY-3
+			if bd[pX][pY] == UNSET {
+				cX += 3
+				cY -= 3
+				bd[cX][cY] = MAXIMIZER
 				moveCount++
 			}
 			state = LAST
 		}
 		if (moveCount % 2) == 1 {
-			fmt.Printf("My move: %d %d\n", c_x, c_y)
+			fmt.Printf("My move: %d %d\n", cX, cY)
 			printBoard(bd)
 			l, m := readMove(bd, true)
 			bd[l][m] = MINIMIZER
@@ -650,13 +643,13 @@ func bookStart(bd *Board) int {
 // Struct and 2 functions to encapsulate tracking of
 // best possible move.
 
-type MoveKeeper struct {
+type moveKeeper struct {
 	moves [25][2]int
 	next  int // index into moves[]
 	max   int
 }
 
-func (p *MoveKeeper) setMove(a, b int, value int) {
+func (p *moveKeeper) setMove(a, b int, value int) {
 	if value >= p.max {
 		if value > p.max {
 			p.max = value
@@ -668,7 +661,7 @@ func (p *MoveKeeper) setMove(a, b int, value int) {
 	}
 }
 
-func (p *MoveKeeper) chooseMove(deterministic bool) (x, y int, value int) {
+func (p *moveKeeper) chooseMove(deterministic bool) (x, y int, value int) {
 
 	if p.next == 0 {
 		// Loop over all 25 cells couldn't find any
