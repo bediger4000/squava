@@ -100,7 +100,7 @@ func main() {
 		if humanFirst {
 			l, m = readMove(&bd, *printBoardPtr)
 			bd[l][m] = MINIMIZER
-			endOfGame, _ = deltaValue(&bd, 0, l, m)
+			endOfGame, _ = deltaValue(&bd, 0, l, m, 0)
 			moveCounter++
 		}
 
@@ -127,7 +127,7 @@ func main() {
 			fmt.Printf("%d %d\n", a, b)
 		}
 
-		endOfGame, _ = deltaValue(&bd, 0, a, b)
+		endOfGame, _ = deltaValue(&bd, 0, a, b, 0)
 
 	}
 
@@ -170,7 +170,7 @@ func chooseMove(bd *Board, deterministic bool) (xcoord int, ycoord int, value in
 		for j, mark := range row {
 			if mark == UNSET {
 				bd[i][j] = MAXIMIZER
-				stopRecursing, value := deltaValue(bd, 0, i, j)
+				stopRecursing, value := deltaValue(bd, 0, i, j, 0)
 				if !stopRecursing {
 					value = alphaBeta(bd, 1, MINIMIZER, 2*LOSS, 2*WIN, i, j, value)
 				}
@@ -210,7 +210,7 @@ func findWinner(bd *Board) int {
 
 // Calculates and returns the value of the move (x,y)
 // Only considers value gained or lost from the cell (x,y)
-func deltaValue(bd *Board, ply int, x, y int) (stopRecursing bool, value int) {
+func deltaValue(bd *Board, ply int, x, y int, currentValue int) (stopRecursing bool, value int) {
 
 	relevantQuads := indexedWinningQuads[x][y]
 	for _, quad := range relevantQuads {
@@ -248,6 +248,7 @@ func deltaValue(bd *Board, ply int, x, y int) (stopRecursing bool, value int) {
 	stopRecursing = false
 	if ply == maxDepth {
 		stopRecursing = true
+		value += currentValue
 	}
 
 	return stopRecursing, value
@@ -262,7 +263,7 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 			for j, marker := range row {
 				if marker == UNSET {
 					bd[i][j] = MAXIMIZER
-					stopRecursing, delta := deltaValue(bd, ply, x, y)
+					stopRecursing, delta := deltaValue(bd, ply, x, y, boardValue)
 					if stopRecursing {
 						bd[i][j] = UNSET
 						leafNodeCount++
@@ -288,7 +289,7 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 			for j, marker := range row {
 				if marker == UNSET {
 					bd[i][j] = player
-					stopRecursing, delta := deltaValue(bd, ply, x, y)
+					stopRecursing, delta := deltaValue(bd, ply, x, y, boardValue)
 					if stopRecursing {
 						bd[i][j] = UNSET
 						leafNodeCount++
