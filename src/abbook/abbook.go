@@ -107,7 +107,7 @@ func (p *AlphaBetaBook) ChooseMove() (xcoord int, ycoord int, value int, leafcou
 		for j, mark := range row {
 			if mark == UNSET {
 				p.bd[i][j] = MAXIMIZER
-				stop, value := p.deltaValue(0, i, j)
+				stop, value := p.deltaValue(0, i, j, 0)
 				if !stop {
 					value = p.alphaBeta(1, MINIMIZER, 2*LOSS, 2*WIN, i, j, value)
 				}
@@ -163,7 +163,7 @@ var checkableCells [9][2]int = [9][2]int{
 
 // Calculates and returns the value of the move (x,y)
 // Only considers value gained or lost from the cell (x,y)
-func (p *AlphaBetaBook) deltaValue(ply int, x, y int) (stopRecursing bool, value int) {
+func (p *AlphaBetaBook) deltaValue(ply int, x, y int, currentValue int) (stopRecursing bool, value int) {
 
 	relevantQuads := indexedWinningQuads[x][y]
 	for _, quad := range relevantQuads {
@@ -201,6 +201,7 @@ func (p *AlphaBetaBook) deltaValue(ply int, x, y int) (stopRecursing bool, value
 	stopRecursing = false
 	if ply >= p.maxDepth {
 		stopRecursing = true
+		value += currentValue
 	}
 
 	return stopRecursing, value
@@ -215,7 +216,7 @@ func (p *AlphaBetaBook) alphaBeta(ply int, player int, alpha int, beta int, x in
 			for j, marker := range row {
 				if marker == UNSET {
 					p.bd[i][j] = MAXIMIZER
-					stopRecursing, delta := p.deltaValue(ply, x, y)
+					stopRecursing, delta := p.deltaValue(ply, x, y, boardValue)
 					if stopRecursing {
 						p.bd[i][j] = UNSET
 						p.leafNodeCount++
@@ -242,7 +243,7 @@ func (p *AlphaBetaBook) alphaBeta(ply int, player int, alpha int, beta int, x in
 			for j, marker := range row {
 				if marker == UNSET {
 					p.bd[i][j] = player
-					stopRecursing, delta := p.deltaValue(ply, x, y)
+					stopRecursing, delta := p.deltaValue(ply, x, y, boardValue)
 					if stopRecursing {
 						p.bd[i][j] = UNSET
 						p.leafNodeCount++
