@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"math/rand"
 	"negascout"
-	"os"
 	"time"
 )
 
@@ -18,6 +17,7 @@ const (
 )
 
 type Player interface {
+	Name() string
 	MakeMove(int, int, int) // x,y corrds, type of player (MINIMIZER, MAXIMIZER)
 	SetDepth(int)
 	ChooseMove() (int, int, int, int) // x,y coords of move, value, leaf node count
@@ -33,47 +33,22 @@ func main() {
 	randomizeScores := flag.Bool("r", false, "Randomize bias scores")
 	firstType := flag.String("1", "A", "first player type, A: alphabeta, N: negascout")
 	secondType := flag.String("2", "N", "first player type, A: alphabeta, N: negascout")
+	nonInteractive := flag.Int("n", 1, "play <number> games non-interactively")
 	flag.Parse()
 
 	rand.Seed(time.Now().UTC().UnixNano())
+
+	if *nonInteractive > 1 {
+		nonInteractiveGames(*nonInteractive, *firstType, *secondType, *randomizeScores, *maxDepthPtr)
+		return
+	}
 
 	var winner int
 
 	moveCounter := 0
 
-	var first, second Player
-
-	var firstName string
-	var secondName string
-	switch *firstType {
-	case "A":
-		first = alphabeta.New(*deterministic, *maxDepthPtr)
-		firstName = "AlphaBeta"
-	case "N":
-		first = negascout.New(*deterministic, *maxDepthPtr)
-		firstName = "NegaScout"
-	case "B":
-		first = abbook.New(*deterministic, *maxDepthPtr)
-		firstName = "A/B+Book"
-	case "G":
-		first = abgeo.New(*deterministic, *maxDepthPtr)
-		firstName = "A/B+Avoid"
-	}
-
-	switch *secondType {
-	case "A":
-		second = alphabeta.New(*deterministic, *maxDepthPtr)
-		secondName = "AlphaBeta"
-	case "N":
-		second = negascout.New(*deterministic, *maxDepthPtr)
-		secondName = "NegaScout"
-	case "B":
-		second = abbook.New(*deterministic, *maxDepthPtr)
-		secondName = "A/B+Book"
-	case "G":
-		second = abgeo.New(*deterministic, *maxDepthPtr)
-		secondName = "A/B+Avoid"
-	}
+	first, second := createPlayers(*firstType,
+		*secondType, *maxDepthPtr, *deterministic)
 
 	first.SetScores(*randomizeScores)
 	second.SetScores(*randomizeScores)
@@ -86,7 +61,7 @@ func main() {
 		second.MakeMove(i, j, MINIMIZER)
 
 		moveCounter++
-		fmt.Printf("X (%s) <%d,%d> (%d) [%d]\n", firstName, i, j, value, leafCount)
+		fmt.Printf("X (%s) <%d,%d> (%d) [%d]\n", first.Name(), i, j, value, leafCount)
 
 		winner = first.FindWinner() // main() thinks first is maximizer
 		if winner != 0 || moveCounter >= 25 {
@@ -99,7 +74,7 @@ func main() {
 		first.MakeMove(i, j, MINIMIZER)
 
 		moveCounter++
-		fmt.Printf("O (%s) <%d,%d> (%d) [%d]\n", secondName, i, j, value, leafCount)
+		fmt.Printf("O (%s) <%d,%d> (%d) [%d]\n", second.Name(), i, j, value, leafCount)
 
 		first.PrintBoard()
 
@@ -112,14 +87,99 @@ func main() {
 
 	switch winner {
 	case 1:
-		fmt.Printf("X (%s) wins\n", firstName)
+		fmt.Printf("X (%s) wins\n", first.Name())
 	case -1:
-		fmt.Printf("0 (%s) wins\n", secondName)
+		fmt.Printf("0 (%s) wins\n", second.Name())
 	default:
 		fmt.Printf("Cat wins\n")
 	}
 
 	first.PrintBoard()
 
-	os.Exit(0)
+}
+
+func nonInteractiveGames(gameCount int, firstType, secondType string, randomize bool, maxDepth int) {
+
+	for i := 0; i < gameCount; i++ {
+		moveCounter := 0
+
+		first, second := createPlayers(firstType, secondType, maxDepth, randomize)
+
+		fmt.Printf("%d %s %s %d %v ", i, first.Name(), second.Name(), maxDepth, randomize)
+
+		var moves [25][2]int
+		var values [25][2]int
+		var winner int
+
+		for moveCounter < 25 {
+
+			first.SetDepth(moveCounter)
+			i, j, value, _ := first.ChooseMove()
+			moves[moveCounter][0], moves[moveCounter][1] = i, j
+			values[moveCounter][0] = value
+			second.MakeMove(i, j, MINIMIZER)
+			moveCounter++
+			winner = first.FindWinner()
+			if winner != 0 || moveCounter >= 25 {
+				break
+			}
+
+			second.SetDepth(moveCounter)
+			i, j, value, _ = second.ChooseMove()
+			moves[moveCounter][0], moves[moveCounter][1] = i, j
+			values[moveCounter][1] = value
+			first.MakeMove(i, j, MINIMIZER)
+			moveCounter++
+			winner = -second.FindWinner() // main thinks second is minimizer
+			if winner != 0 {
+				break
+			}
+		}
+
+		fmt.Printf("%d %d", moveCounter, winner)
+
+		for i := 0; i < moveCounter; i++ {
+			marker := [2]string{"", ""}
+			for j := 0; j < 2; j++ {
+				if values[i][j] > 9000 {
+					marker[j] = "+"
+				}
+				if  values[i][j] < -9000 {
+					marker[j] = "-"
+				}
+			}
+			fmt.Printf(" %d%s,%d%s", moves[i][0], marker[0], moves[i][1], marker[1])
+		}
+
+		fmt.Printf("\n")
+	}
+}
+
+func createPlayers(firstType, secondType string, maxDepth int, deterministic bool) (Player, Player) {
+
+	var first, second Player
+
+	switch firstType {
+	case "A":
+		first = alphabeta.New(deterministic, maxDepth)
+	case "N":
+		first = negascout.New(deterministic, maxDepth)
+	case "B":
+		first = abbook.New(deterministic, maxDepth)
+	case "G":
+		first = abgeo.New(deterministic, maxDepth)
+	}
+
+	switch secondType {
+	case "A":
+		second = alphabeta.New(deterministic, maxDepth)
+	case "N":
+		second = negascout.New(deterministic, maxDepth)
+	case "B":
+		second = abbook.New(deterministic, maxDepth)
+	case "G":
+		second = abgeo.New(deterministic, maxDepth)
+	}
+
+	return first, second
 }
