@@ -30,6 +30,7 @@ var indexedLosingTriplets [5][5][][][]int
 var indexedWinningQuads [5][5][][][]int
 var indexedCalcs bool = false
 
+
 func calculateIndexedMatrices() {
 	// Set up for use by deltaValue()
 	for _, triplet := range losingTriplets {
@@ -55,6 +56,10 @@ func New(deterministic bool, maxdepth int) (*AlphaBeta) {
 	r.maxDepth = maxdepth
 	r.deterministic = deterministic
 	return &r
+}
+
+func (p *AlphaBeta) Name() string {
+	return "AlphaBeta"
 }
 
 func (p *AlphaBeta) MakeMove(x, y int, player int) {

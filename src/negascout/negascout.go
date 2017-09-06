@@ -31,6 +31,11 @@ var indexedLosingTriplets [5][5][][][]int
 var indexedWinningQuads [5][5][][][]int
 var indexedCalcs bool = false
 
+
+func (p *NegaScout) Name() string {
+	return "NegaScout"
+}
+
 func calculateIndexedMatrices() {
     // Set up for use by deltaValue()
     for _, triplet := range losingTriplets {

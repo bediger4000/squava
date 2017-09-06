@@ -67,6 +67,10 @@ func New(deterministic bool, maxdepth int) *AlphaBetaBook {
 	return &r
 }
 
+func (p *AlphaBetaBook) Name() string {
+	return "A/B+Book"
+}
+
 func (p *AlphaBetaBook) MakeMove(x, y int, player int) {
 	p.moveCount++
 	p.bd[x][y] = player

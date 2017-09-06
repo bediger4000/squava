@@ -61,6 +61,10 @@ func New(deterministic bool, maxdepth int) (*AlphaBetaGeo) {
 	return &r
 }
 
+func (p *AlphaBetaGeo) Name() string {
+	return "A/B+Avoid"
+}
+
 func (p *AlphaBetaGeo) MakeMove(x, y int, player int) {
 	p.bd[x][y] = player
 }
