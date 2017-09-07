@@ -111,7 +111,10 @@ func main() {
 		humanFirst = true
 
 		leafNodeCount = 0
+		start := time.Now()
 		a, b, score := chooseMove(&bd, *deterministic)
+		end := time.Now()
+		elapsed := end.Sub(start)
 
 		if a < 0 {
 			break // Cat gets the game
@@ -121,7 +124,7 @@ func main() {
 		moveCounter++
 
 		if *printBoardPtr {
-			fmt.Printf("My move: %d %d (%d) [%d]\n", a, b, score, leafNodeCount)
+			fmt.Printf("My move: %d %d (%d) [%d] %v\n", a, b, score, leafNodeCount, elapsed)
 			printBoard(&bd)
 		} else {
 			fmt.Printf("%d %d\n", a, b)
@@ -151,20 +154,20 @@ func main() {
 
 func setDepth(moveCounter int, endGameDepth int) {
 	if moveCounter < 4 {
-		maxDepth = 6
-	}
-	if moveCounter > 3 {
 		maxDepth = 8
 	}
+	if moveCounter > 3 {
+		maxDepth = 10
+	}
 	if moveCounter > 10 {
-		maxDepth = endGameDepth
+		maxDepth = 12
 	}
 }
 
 // Choose computer's next move: return x,y coords of move and its score.
 func chooseMove(bd *Board, deterministic bool) (xcoord int, ycoord int, value int) {
 
-	var moves = moveKeeper{next: 0, max: 2 * LOSS}
+	var moves = moveKeeper{max: 2 * LOSS}
 
 	for i, row := range bd {
 		for j, mark := range row {
@@ -173,6 +176,8 @@ func chooseMove(bd *Board, deterministic bool) (xcoord int, ycoord int, value in
 				stopRecursing, value := deltaValue(bd, 0, i, j, 0)
 				if !stopRecursing {
 					value = alphaBeta(bd, 1, MINIMIZER, 2*LOSS, 2*WIN, i, j, value)
+				} else {
+					leafNodeCount++
 				}
 				bd[i][j] = UNSET
 				moves.setMove(i, j, value)
@@ -278,6 +283,7 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 						alpha = value
 					}
 					if beta <= alpha {
+						leafNodeCount++
 						return value
 					}
 				}
@@ -304,6 +310,7 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 						beta = value
 					}
 					if beta <= alpha {
+						leafNodeCount++
 						return value
 					}
 				}
