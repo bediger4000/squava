@@ -118,7 +118,10 @@ func main() {
 
 		humanFirst = true
 
+		start := time.Now()
 		a, b, score, leaves := chooseMove(&bd, *deterministic, maxDepth)
+		end := time.Now()
+		elapsed := end.Sub(start)
 
 		if a < 0 {
 			break // Cat gets the game
@@ -128,7 +131,7 @@ func main() {
 		moveCounter++
 
 		if *printBoardPtr {
-			fmt.Printf("My move: %d %d (%d) [%d]\n", a, b, score, leaves)
+			fmt.Printf("My move: %d %d (%d) [%d] %v\n", a, b, score, leaves, elapsed)
 			printBoard(&bd)
 		} else {
 			fmt.Printf("%d %d\n", a, b)
@@ -161,19 +164,24 @@ func setDepth(moveCounter int, endGameDepth int) int {
 	var maxDepth int
 
 	if moveCounter < 4 {
-		maxDepth = 6
-	}
-	if moveCounter > 3 {
 		maxDepth = 8
 	}
+	if moveCounter > 3 {
+		maxDepth = 10
+	}
 	if moveCounter > 10 {
-		maxDepth = endGameDepth
+		maxDepth = 12
 	}
 
 	return maxDepth
 }
 
 var stateStack *gameState
+
+func OldState(gs *gameState) {
+	gs.next = stateStack
+	stateStack = gs
+}
 
 func NewState(bd *Board, maxDepth int, value int, x int, y int) *gameState {
 	var s *gameState
@@ -209,12 +217,12 @@ func chooseMove(bd *Board, deterministic bool, maxDepth int) (xcoord int, ycoord
 		for j, mark := range row {
 			if mark == UNSET {
 				stopRecursing, value := deltaValue(maxDepth, bd, 0, i, j, 0)
-				if !stopRecursing {
-					gs := NewState(bd, maxDepth, value, i, j)
-					toDo <- gs
-				} else {
+				if stopRecursing {
 					moves.setMove(i, j, value)
 					leafNodes++
+				} else {
+					gs := NewState(bd, maxDepth, value, i, j)
+					toDo <- gs
 				}
 			}
 		}
@@ -224,15 +232,16 @@ func chooseMove(bd *Board, deterministic bool, maxDepth int) (xcoord int, ycoord
 		for _, mark := range row {
 			if mark == UNSET {
 				gs := <- finished
-				fmt.Printf("	<%d,%d> (%d)\n", gs.x, gs.y, gs.value)
+				// fmt.Printf("	<%d,%d> (%d)\n", gs.x, gs.y, gs.value)
 				moves.setMove(gs.x, gs.y, gs.value)
 				leafNodes += gs.leafNodes
+				OldState(gs)
 			}
 		}
 	}
 
-	a, b, v := moves.chooseMove(deterministic)
-	return a, b, v, leafNodes
+	xcoord, ycoord, value = moves.chooseMove(deterministic)
+	return xcoord, ycoord, value, leafNodes
 }
 
 func findWinner(bd *Board) int {
@@ -320,7 +329,7 @@ func alphaBeta(maxDepth int, bd *Board, ply int, player int, alpha int, beta int
 					stopRecursing, delta := deltaValue(maxDepth, bd, ply, x, y, boardValue)
 					if stopRecursing {
 						bd[i][j] = UNSET
-						return delta, 1
+						return delta, leafNodes + 1
 					}
 					n, leaves := alphaBeta(maxDepth, bd, ply+1, MINIMIZER, alpha, beta, i, j, boardValue+delta)
 					bd[i][j] = UNSET
@@ -332,7 +341,7 @@ func alphaBeta(maxDepth int, bd *Board, ply int, player int, alpha int, beta int
 						alpha = value
 					}
 					if beta <= alpha {
-						return value, leafNodes
+						return value, leafNodes + 1
 					}
 				}
 			}
@@ -346,7 +355,7 @@ func alphaBeta(maxDepth int, bd *Board, ply int, player int, alpha int, beta int
 					stopRecursing, delta := deltaValue(maxDepth, bd, ply, x, y, boardValue)
 					if stopRecursing {
 						bd[i][j] = UNSET
-						return delta, 1
+						return delta, leafNodes + 1
 					}
 					n, leaves := alphaBeta(maxDepth, bd, ply+1, -player, alpha, beta, i, j, boardValue+delta)
 					bd[i][j] = UNSET
@@ -358,7 +367,7 @@ func alphaBeta(maxDepth int, bd *Board, ply int, player int, alpha int, beta int
 						beta = value
 					}
 					if beta <= alpha {
-						return value, leafNodes
+						return value, leafNodes + 1
 					}
 				}
 			}
@@ -372,8 +381,16 @@ func worker(sn int, from chan *gameState, to chan *gameState) {
 	var curr *gameState
 	for {
 		curr = <- from
-		bd := &(curr.bd)
-		curr.value, curr.leafNodes = alphaBeta(curr.maxDepth, bd, 1, MINIMIZER, 2*LOSS, 2*WIN, curr.x, curr.y, curr.value)
+		curr.value, curr.leafNodes = alphaBeta(
+			curr.maxDepth,
+			&(curr.bd),
+			1,
+			MINIMIZER,
+			2*LOSS,
+			2*WIN,
+			curr.x,
+			curr.y,
+			curr.value)
 		to <- curr
 	}
 }
