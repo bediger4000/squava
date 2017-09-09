@@ -32,6 +32,12 @@ Command line, text interface.  `squava` (the program) command line options:
       -r    Randomize bias scores
       -B    Computer takes first move, opens from a "book"
 
+The multithreaded version adds:
+
+  -N int
+        Use this many threads (default 4)
+
+
 
 Alpha-Beta minimax, [algorithm](https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning)
 from Wikipedia. Since more than one move can result in the maximum numerical score,
@@ -46,6 +52,16 @@ If more than 12 marks appear, it looks ahead 5 moves for each player.
 This is something I set by trial and error. I set the lookahead to as large
 a number as I could stand to wait for. If the human plays right in the first few moves
 when the program isn't looking too far ahead, the human can win.
+
+The threaded (goroutined) version has a simple worker pool design.
+It starts a number of goroutines that block on a buffered channel
+of pointers-to-game-state. When the program needs to decide on a move,
+it makes one game-state struct for each possible move it can make.
+The game-state structs go into the buffered channel. Each worker
+goroutine gets a game-state struct, does the alpha-beta minimaxing
+for a single move, and puts the result on another buffered channel.
+The main goroutine waits for results and chooses the maximum-valued
+move to play.
 
 ### Book
 
@@ -141,6 +157,7 @@ that actually produces a worthwhile opponent, and it's also quite simple.
 ## Building the Golang programs
 
     go build squava.go
+    go build squavathr.go  # Multi-goroutine version
     go build sns.go
     go build playoff5.go
 
