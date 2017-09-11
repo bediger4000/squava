@@ -14,13 +14,13 @@ import (
 type Board [5][5]int
 
 type gameState struct {
-	bd Board
-	maxDepth int
-	x, y int
-	value int
+	bd        Board
+	maxDepth  int
+	x, y      int
+	value     int
 	leafNodes int
-	quit bool
-	next *gameState
+	quit      bool
+	next      *gameState
 }
 
 var toDo chan *gameState
@@ -34,7 +34,6 @@ const (
 	MINIMIZER = -1
 	UNSET     = 0
 )
-
 
 // Arrays of losing triplets and winning quads, indexed
 // by <x,y> coords of all pairs composing each of the quads
@@ -52,7 +51,7 @@ func main() {
 	firstMovePtr := flag.String("M", "", "Tell computer to make this first move (x,y)")
 	threadCountPtr := flag.Int("N", 4, "Use this many threads")
 	randomizeScores := flag.Bool("r", false, "Randomize bias scores")
-	// useBook := flag.Bool("B", false, "Use book start or defense")
+	useBook := flag.Bool("B", false, "Use book start or defense")
 	flag.Parse()
 
 	*printBoardPtr = !*printBoardPtr
@@ -88,6 +87,18 @@ func main() {
 
 	moveCounter := 0
 	var bd Board
+
+	if *useBook {
+		fmt.Printf("Using opening book\n")
+		*firstMovePtr = ""
+		if humanFirst {
+			l, m := readMove(&bd, *printBoardPtr)
+			bd[l][m] = MINIMIZER
+			moveCounter = 1 + bookDefend(&bd, l, m)
+		} else {
+			moveCounter += bookStart(&bd)
+		}
+	}
 
 	if *firstMovePtr != "" {
 		var x1, y1 int
@@ -164,13 +175,13 @@ func setDepth(moveCounter int, endGameDepth int) int {
 	var maxDepth int
 
 	if moveCounter < 4 {
-		maxDepth = 8
+		maxDepth = 6
 	}
 	if moveCounter > 3 {
-		maxDepth = 10
+		maxDepth = 8
 	}
 	if moveCounter > 10 {
-		maxDepth = 12
+		maxDepth = 10
 	}
 
 	return maxDepth
@@ -231,7 +242,7 @@ func chooseMove(bd *Board, deterministic bool, maxDepth int) (xcoord int, ycoord
 	for _, row := range bd {
 		for _, mark := range row {
 			if mark == UNSET {
-				gs := <- finished
+				gs := <-finished
 				// fmt.Printf("	<%d,%d> (%d)\n", gs.x, gs.y, gs.value)
 				moves.setMove(gs.x, gs.y, gs.value)
 				leafNodes += gs.leafNodes
@@ -269,6 +280,23 @@ func findWinner(bd *Board) int {
 	return 0
 }
 
+// 4-in-a-row where you don't want to have the middle 2
+var noMiddle2 [4][4][2]int = [4][4][2]int{
+	{{3, 0}, {2, 1}, {1, 2}, {0, 3}},
+	{{1, 0}, {2, 1}, {3, 2}, {4, 3}},
+	{{0, 1}, {1, 2}, {2, 3}, {3, 4}},
+	{{1, 4}, {2, 3}, {3, 2}, {4, 1}},
+}
+
+// 3-in-a-row where you don't want any 2 plus a blank
+var no2 [4][3][2]int = [4][3][2]int{
+
+	{{2, 0}, {1, 1}, {0, 2}},
+	{{0, 2}, {1, 3}, {2, 4}},
+	{{4, 2}, {3, 3}, {2, 4}},
+	{{4, 2}, {3, 1}, {2, 0}},
+}
+
 // Calculates and returns the value of the move (x,y)
 // Only considers value gained or lost from the cell (x,y)
 func deltaValue(maxDepth int, bd *Board, ply int, x, y int, currentValue int) (stopRecursing bool, value int) {
@@ -296,6 +324,36 @@ func deltaValue(maxDepth int, bd *Board, ply int, x, y int, currentValue int) (s
 
 		if sum == 3 || sum == -3 {
 			return true, -sum / 3 * (WIN - ply)
+		}
+	}
+
+	for _, triplet := range no2 {
+		for _, pair := range triplet {
+			if x == pair[0] && y == pair[1] {
+				sum := bd[triplet[0][0]][triplet[0][1]]
+				sum += bd[triplet[1][0]][triplet[1][1]]
+				sum += bd[triplet[2][0]][triplet[2][1]]
+				if sum == 2 || sum == -2 {
+					value += bd[x][y] * -100
+				}
+				break
+			}
+		}
+	}
+
+	for _, quad := range noMiddle2 {
+		player := bd[x][y]
+		if (x == quad[1][0] && y == quad[1][1] && player == bd[quad[2][0]][quad[2][1]]) ||
+			(x == quad[2][0] && y == quad[2][1] && player == bd[quad[1][0]][quad[1][1]]) {
+
+			sum := bd[quad[0][0]][quad[0][1]]
+			sum += bd[quad[1][0]][quad[1][1]]
+			sum += bd[quad[2][0]][quad[2][1]]
+			sum += bd[quad[3][0]][quad[3][1]]
+
+			if sum == 2 || sum == -2 {
+				value += player * -100
+			}
 		}
 	}
 
@@ -380,7 +438,7 @@ func alphaBeta(maxDepth int, bd *Board, ply int, player int, alpha int, beta int
 func worker(sn int, from chan *gameState, to chan *gameState) {
 	var curr *gameState
 	for {
-		curr = <- from
+		curr = <-from
 		curr.value, curr.leafNodes = alphaBeta(
 			curr.maxDepth,
 			&(curr.bd),
