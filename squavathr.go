@@ -95,6 +95,9 @@ func main() {
 			l, m := readMove(&bd, *printBoardPtr)
 			bd[l][m] = MINIMIZER
 			moveCounter = 1 + bookDefend(&bd, l, m)
+			if moveCounter %2 == 1 {
+				humanFirst = false
+			}
 		} else {
 			moveCounter += bookStart(&bd)
 		}
@@ -644,16 +647,14 @@ func bookDefend(bd *Board, firstX int, firstY int) int {
 	for state != LAST {
 		switch state {
 		case FIRST:
-			// Find the diagonal, and block it
-		OUTERFIRST:
+			OUTERFIRST:
 			for i := -3; i < 4; i += 6 {
+				a := firstX + i
 				for j := -3; j < 4; j += 6 {
-					a := firstX + i
 					b := firstY + j
 					if a >= 0 && a <= 4 && b >= 0 && b <= 4 {
 						// Since <firstX, firstY> have an X, <a,b> must be empty
-						cX = a
-						cY = b
+						cX, cY = a, b
 						bd[cX][cY] = MAXIMIZER
 						moveCount++
 						break OUTERFIRST
@@ -682,10 +683,12 @@ func bookDefend(bd *Board, firstX int, firstY int) int {
 				}
 			}
 			// lastx, lasty - coords of move to respond to
+			cX, cY = -1, -1
 		FOUNDMOVE:
 			for i := -3; i < 4; i += 6 {
+					a := lastx+i
 				for j := -3; j < 4; j += 6 {
-					a, b := lastx+i, lasty+j
+					b := lasty+j
 					if a >= 0 && a <= 4 && b >= 0 && b <= 4 {
 						if bd[a][b] == UNSET {
 							bd[a][b] = MAXIMIZER
@@ -695,6 +698,11 @@ func bookDefend(bd *Board, firstX int, firstY int) int {
 						}
 					}
 				}
+			}
+			if cX == -1 || cY == -1 {
+				// human not following "triangle" book opening,
+				// this function only defends that.
+				break // out of for-loop over state
 			}
 			fmt.Printf("My move: %d %d\n", cX, cY)
 			printBoard(bd)
