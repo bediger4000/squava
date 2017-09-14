@@ -19,7 +19,6 @@ type gameState struct {
 	x, y      int
 	value     int
 	leafNodes int
-	quit      bool
 	next      *gameState
 }
 
@@ -189,12 +188,15 @@ func setDepth(moveCounter int, endGameDepth int) int {
 
 var stateStack *gameState
 
-func OldState(gs *gameState) {
+// oldState puts *gameState points on a stack, for re-use
+func oldState(gs *gameState) {
 	gs.next = stateStack
 	stateStack = gs
 }
 
-func NewState(bd *Board, maxDepth int, value int, x int, y int) *gameState {
+// newState either allocates a new *gameState, or pulls one off
+// the stack of unused *gameStates.
+func newState(bd *Board, maxDepth int, value int, x int, y int) *gameState {
 	var s *gameState
 	if stateStack == nil {
 		s = new(gameState)
@@ -232,7 +234,7 @@ func chooseMove(bd *Board, deterministic bool, maxDepth int) (xcoord int, ycoord
 					moves.setMove(i, j, value)
 					leafNodes++
 				} else {
-					gs := NewState(bd, maxDepth, value, i, j)
+					gs := newState(bd, maxDepth, value, i, j)
 					toDo <- gs
 				}
 			}
@@ -246,7 +248,7 @@ func chooseMove(bd *Board, deterministic bool, maxDepth int) (xcoord int, ycoord
 				// fmt.Printf("	<%d,%d> (%d)\n", gs.x, gs.y, gs.value)
 				moves.setMove(gs.x, gs.y, gs.value)
 				leafNodes += gs.leafNodes
-				OldState(gs)
+				oldState(gs)
 			}
 		}
 	}
@@ -281,7 +283,7 @@ func findWinner(bd *Board) int {
 }
 
 // 4-in-a-row where you don't want to have the middle 2
-var noMiddle2 [4][4][2]int = [4][4][2]int{
+var noMiddle2 = [4][4][2]int{
 	{{3, 0}, {2, 1}, {1, 2}, {0, 3}},
 	{{1, 0}, {2, 1}, {3, 2}, {4, 3}},
 	{{0, 1}, {1, 2}, {2, 3}, {3, 4}},
@@ -289,7 +291,7 @@ var noMiddle2 [4][4][2]int = [4][4][2]int{
 }
 
 // 3-in-a-row where you don't want any 2 plus a blank
-var no2 [4][3][2]int = [4][3][2]int{
+var no2 = [4][3][2]int{
 
 	{{2, 0}, {1, 1}, {0, 2}},
 	{{0, 2}, {1, 3}, {2, 4}},
@@ -473,7 +475,7 @@ func printBoard(bd *Board) {
 	}
 }
 
-var losingTriplets [][][]int = [][][]int{
+var losingTriplets = [][][]int{
 	{{0, 0}, {1, 0}, {2, 0}},
 	{{0, 0}, {0, 1}, {0, 2}},
 	{{0, 0}, {1, 1}, {2, 2}},
@@ -523,7 +525,7 @@ var losingTriplets [][][]int = [][][]int{
 	{{1, 4}, {2, 4}, {3, 4}},
 	{{2, 4}, {3, 4}, {4, 4}},
 }
-var winningQuads [][][]int = [][][]int{
+var winningQuads = [][][]int{
 	{{0, 0}, {1, 0}, {2, 0}, {3, 0}},
 	{{0, 0}, {0, 1}, {0, 2}, {0, 3}},
 	{{0, 0}, {1, 1}, {2, 2}, {3, 3}},
@@ -562,26 +564,38 @@ func readMove(bd *Board, print bool) (x, y int) {
 		if print {
 			fmt.Printf("Your move: ")
 		}
-		_, err := fmt.Scanf("%d %d\n", &x, &y)
-		if err == io.EOF {
-			os.Exit(0)
+		x, y = scanMove()
+		readMove = checkMove(bd, x, y, print)
+	}
+	return x, y
+}
+
+func checkMove(bd *Board, x, y int, print bool) bool {
+	r := false
+	switch {
+	case x < 0 || x > 4 || y < 0 || y > 4:
+		if print {
+			fmt.Printf("Choose two numbers between 0 and 4, try again\n")
 		}
-		if err != nil {
-			fmt.Printf("Failed to read: %v\n", err)
-			os.Exit(1)
+	case bd[x][y] == 0:
+		r = true
+	case bd[x][y] != 0:
+		if print {
+			fmt.Printf("Cell (%d, %d) already occupied, try again\n", x, y)
 		}
-		switch {
-		case x < 0 || x > 4 || y < 0 || y > 4:
-			if print {
-				fmt.Printf("Choose two numbers between 0 and 4, try again\n")
-			}
-		case bd[x][y] == 0:
-			readMove = true
-		case bd[x][y] != 0:
-			if print {
-				fmt.Printf("Cell (%d, %d) already occupied, try again\n", x, y)
-			}
-		}
+	}
+	return r;
+}
+
+func scanMove() (int, int) {
+	var x, y int
+	_, err := fmt.Scanf("%d %d\n", &x, &y)
+	if err == io.EOF {
+		os.Exit(0)
+	}
+	if err != nil {
+		fmt.Printf("Failed to read: %v\n", err)
+		os.Exit(1)
 	}
 	return x, y
 }
@@ -628,7 +642,7 @@ const (
 	LAST
 )
 
-var firstMoves [4][2]int = [4][2]int{
+var firstMoves = [4][2]int{
 	{0, 0},
 	{0, 1},
 	{1, 0},
