@@ -94,7 +94,7 @@ func main() {
 			l, m := readMove(&bd, *printBoardPtr)
 			bd[l][m] = MINIMIZER
 			moveCounter = 1 + bookDefend(&bd, l, m)
-			if moveCounter %2 == 1 {
+			if moveCounter%2 == 1 {
 				humanFirst = false
 			}
 		} else {
@@ -104,7 +104,10 @@ func main() {
 
 	if *firstMovePtr != "" {
 		var x1, y1 int
-		fmt.Sscanf(*firstMovePtr, "%d,%d", &x1, &y1)
+		n, e := fmt.Sscanf(*firstMovePtr, "%d,%d", &x1, &y1)
+		if n != 2 || e != nil {
+			fmt.Printf("Wrong move input. Format N,M, where N and M numbers 0 - 4 \n")
+		}
 		fmt.Printf("My move: %d %d\n", x1, y1)
 		humanFirst = true
 		bd[x1][y1] = MAXIMIZER
@@ -169,7 +172,9 @@ func main() {
 		printBoard(&bd)
 	}
 
-	os.Exit(0)
+	if toDo != nil {
+		close(toDo)
+	}
 }
 
 func setDepth(moveCounter int, endGameDepth int) int {
@@ -587,18 +592,27 @@ func checkMove(bd *Board, x, y int, print bool) bool {
 			fmt.Printf("Cell (%d, %d) already occupied, try again\n", x, y)
 		}
 	}
-	return r;
+	return r
 }
 
 func scanMove() (int, int) {
 	var x, y int
-	_, err := fmt.Scanf("%d %d\n", &x, &y)
-	if err == io.EOF {
-		os.Exit(0)
-	}
-	if err != nil {
-		fmt.Printf("Failed to read: %v\n", err)
-		os.Exit(1)
+
+	for looping := true; looping; {
+
+		n, err := fmt.Scanf("%d %d\n", &x, &y)
+		if err == io.EOF {
+			os.Exit(0)
+		}
+		if n != 2 {
+			fmt.Printf("Give two numbers\n")
+			continue
+		}
+		if err != nil {
+			fmt.Printf("Failed to read: %v\n", err)
+			continue
+		}
+		looping = false
 	}
 	return x, y
 }
@@ -661,7 +675,7 @@ func bookDefend(bd *Board, firstX int, firstY int) int {
 	for state != LAST {
 		switch state {
 		case FIRST:
-			OUTERFIRST:
+		OUTERFIRST:
 			for i := -3; i < 4; i += 6 {
 				a := firstX + i
 				for j := -3; j < 4; j += 6 {
@@ -700,9 +714,9 @@ func bookDefend(bd *Board, firstX int, firstY int) int {
 			cX, cY = -1, -1
 		FOUNDMOVE:
 			for i := -3; i < 4; i += 6 {
-					a := lastx+i
+				a := lastx + i
 				for j := -3; j < 4; j += 6 {
-					b := lasty+j
+					b := lasty + j
 					if a >= 0 && a <= 4 && b >= 0 && b <= 4 {
 						if bd[a][b] == UNSET {
 							bd[a][b] = MAXIMIZER
