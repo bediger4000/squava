@@ -446,20 +446,22 @@ func alphaBeta(maxDepth int, bd *Board, ply int, player int, alpha int, beta int
 }
 
 func worker(sn int, from chan *gameState, to chan *gameState) {
-	var curr *gameState
 	for {
-		curr = <-from
-		curr.value, curr.leafNodes = alphaBeta(
-			curr.maxDepth,
-			&(curr.bd),
-			1,
-			MINIMIZER,
-			2*LOSS,
-			2*WIN,
-			curr.x,
-			curr.y,
-			curr.value)
-		to <- curr
+		if curr, ok := <-from; ok {
+			curr.value, curr.leafNodes = alphaBeta(
+				curr.maxDepth,
+				&(curr.bd),
+				1,
+				MINIMIZER,
+				2*LOSS,
+				2*WIN,
+				curr.x,
+				curr.y,
+				curr.value)
+			to <- curr
+		} else {
+			return
+		}
 	}
 }
 
