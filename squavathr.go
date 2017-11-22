@@ -233,6 +233,7 @@ func newState(bd *Board, maxDepth int, value int, x int, y int) *gameState {
 func chooseMove(bd *Board, deterministic bool, maxDepth int) (xcoord int, ycoord int, value int, leafNodes int) {
 
 	var moves = moveKeeper{max: 2 * LOSS}
+	maxDepth--
 
 	for i, row := range bd {
 		for j, mark := range row {
@@ -253,7 +254,7 @@ func chooseMove(bd *Board, deterministic bool, maxDepth int) (xcoord int, ycoord
 		for _, mark := range row {
 			if mark == UNSET {
 				gs := <-finished
-				// fmt.Printf("	<%d,%d> (%d)\n", gs.x, gs.y, gs.value)
+				// fmt.Printf("	<%d,%d> %d  [%d]\n", gs.x, gs.y, gs.value, gs.leafNodes)
 				moves.setMove(gs.x, gs.y, gs.value)
 				leafNodes += gs.leafNodes
 				oldState(gs)
