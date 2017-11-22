@@ -30,14 +30,11 @@ Command line, text interface.  `squava` (the program) command line options:
             maximum lookahead depth (default 10)
       -n    Don't print board, just emit moves
       -r    Randomize bias scores
-      -B    Computer takes first move, opens from a "book"
+      -B    Computer opens from a "book", first or second move
 
 The multithreaded version adds:
 
-  -N int
-        Use this many threads (default 4)
-
-
+  -N Use this many threads (default 4)
 
 Alpha-Beta minimax, [algorithm](https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning)
 from Wikipedia. Since more than one move can result in the maximum numerical score,
