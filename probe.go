@@ -79,27 +79,27 @@ func main() {
 	var bestValue int
 	var bestMoves [25][2]int
 	var bestNext int
+	var totalLeafNodes int
 
 	switch nextPlayer {
 	case MAXIMIZER:
-		bestValue = 2*LOSS
+		bestValue = 2 * LOSS
 	case MINIMIZER:
-		bestValue = 2*WIN
+		bestValue = 2 * WIN
 	}
 
 	for i, row := range bd {
 		for j, mark := range row {
 			if mark == UNSET {
 				bd[i][j] = nextPlayer
-				stopRecursing, val := deltaValue(&bd, 0, i, j)
+				stopRecursing, val := deltaValue(maxDepth, &bd, 0, i, j, bestValue)
 				leafNodes = 0
 				before := time.Now()
 				if !stopRecursing {
-					val = alphaBeta(&bd, 0, -nextPlayer, 2*LOSS, 2*WIN, i, j, val)
+					val, leafNodes = alphaBeta(maxDepth, &bd, 0, -nextPlayer, 2*LOSS, 2*WIN, i, j, val)
+				} else {
+					leafNodes = 1
 				}
-				after := time.Now()
-				bd[i][j] = UNSET
-				fmt.Printf("<%d,%d>\t%d [%d]\t%v\n", i, j, val, leafNodes, after.Sub(before))
 				switch nextPlayer {
 				case MAXIMIZER:
 					if val >= bestValue {
@@ -122,6 +122,10 @@ func main() {
 						bestNext++
 					}
 				}
+				after := time.Now()
+				bd[i][j] = UNSET
+				totalLeafNodes += leafNodes
+				fmt.Printf("<%d,%d>\t%d [%d]\t%v\n", i, j, val, leafNodes, after.Sub(before))
 			}
 		}
 	}
@@ -130,6 +134,7 @@ func main() {
 	for i := 0; i < bestNext; i++ {
 		fmt.Printf("\t<%d,%d>\n", bestMoves[i][0], bestMoves[i][1])
 	}
+	fmt.Printf("%d total leafnodes\n", totalLeafNodes)
 
 	fmt.Printf("%s  %d  ", os.Args[0], maxDepth)
 	for _, cell := range moveSequence {
@@ -137,7 +142,9 @@ func main() {
 	}
 	fmt.Printf(" %d,%d", bestMoves[0][0], bestMoves[0][1])
 	fmt.Printf("\n")
+
 	bd[bestMoves[0][0]][bestMoves[0][1]] = nextPlayer
+
 	printBoard(&bd)
 	fmt.Printf("\n")
 
@@ -146,7 +153,7 @@ func main() {
 
 // Calculates and returns the value of the move (x,y)
 // Only considers value gained or lost from the cell (x,y)
-func deltaValue(bd *Board, ply int, x, y int) (stopRecursing bool, value int) {
+func deltaValue(maxPlies int, bd *Board, ply int, x, y int, currentValue int) (stopRecursing bool, value int) {
 
 	relevantQuads := indexedWinningQuads[x][y]
 	for _, quad := range relevantQuads {
@@ -174,6 +181,36 @@ func deltaValue(bd *Board, ply int, x, y int) (stopRecursing bool, value int) {
 		}
 	}
 
+	for _, triplet := range no2 {
+		for _, pair := range triplet {
+			if x == pair[0] && y == pair[1] {
+				sum := bd[triplet[0][0]][triplet[0][1]]
+				sum += bd[triplet[1][0]][triplet[1][1]]
+				sum += bd[triplet[2][0]][triplet[2][1]]
+				if sum == 2 || sum == -2 {
+					value += bd[x][y] * -100
+				}
+				break
+			}
+		}
+	}
+
+	for _, quad := range noMiddle2 {
+		player := bd[x][y]
+		if (x == quad[1][0] && y == quad[1][1] && player == bd[quad[2][0]][quad[2][1]]) ||
+			(x == quad[2][0] && y == quad[2][1] && player == bd[quad[1][0]][quad[1][1]]) {
+
+			sum := bd[quad[0][0]][quad[0][1]]
+			sum += bd[quad[1][0]][quad[1][1]]
+			sum += bd[quad[2][0]][quad[2][1]]
+			sum += bd[quad[3][0]][quad[3][1]]
+
+			if sum == 2 || sum == -2 {
+				value += player * -100
+			}
+		}
+	}
+
 	// Give it a slight bias for those early
 	// moves when all losing-triplets and winning-quads
 	// are beyond the horizon.
@@ -182,8 +219,9 @@ func deltaValue(bd *Board, ply int, x, y int) (stopRecursing bool, value int) {
 	// If squava has a "cat game", then this is wrong. Cat
 	// games could stop recursing here.
 	stopRecursing = false
-	if ply == maxDepth {
+	if ply == maxPlies {
 		stopRecursing = true
+		value += currentValue
 	}
 
 	return stopRecursing, value
@@ -204,7 +242,9 @@ var checkableCells [9][2]int = [9][2]int{
 // player makes move in this invocation.
 // previous player (-player) just made the move <x,y>,
 // bd has value boardValue.
-func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int, boardValue int) (value int) {
+func alphaBeta(maxDepth int, bd *Board, ply int, player int, alpha int, beta int, x int, y int, boardValue int) (value int, leafNodes int) {
+
+	leafNodes = 0
 
 	switch player {
 	case MAXIMIZER:
@@ -213,14 +253,14 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 			for j, marker := range row {
 				if marker == UNSET {
 					bd[i][j] = MAXIMIZER
-					stopRecursing, delta := deltaValue(bd, ply, x, y)
+					stopRecursing, delta := deltaValue(maxDepth, bd, ply, x, y, boardValue)
 					if stopRecursing {
 						bd[i][j] = UNSET
-						leafNodes++
-						return delta
+						return delta, leafNodes + 1
 					}
-					n := alphaBeta(bd, ply+1, MINIMIZER, alpha, beta, i, j, boardValue+delta)
+					n, leaves := alphaBeta(maxDepth, bd, ply+1, MINIMIZER, alpha, beta, i, j, boardValue+delta)
 					bd[i][j] = UNSET
+					leafNodes += leaves
 					if n > value {
 						value = n
 					}
@@ -228,7 +268,7 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 						alpha = value
 					}
 					if beta <= alpha {
-						return value
+						return value, leafNodes + 1
 					}
 				}
 			}
@@ -239,14 +279,14 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 			for j, marker := range row {
 				if marker == UNSET {
 					bd[i][j] = player
-					stopRecursing, delta := deltaValue(bd, ply, x, y)
+					stopRecursing, delta := deltaValue(maxDepth, bd, ply, x, y, boardValue)
 					if stopRecursing {
 						bd[i][j] = UNSET
-						leafNodes++
-						return delta
+						return delta, leafNodes + 1
 					}
-					n := alphaBeta(bd, ply+1, -player, alpha, beta, i, j, boardValue+delta)
+					n, leaves := alphaBeta(maxDepth, bd, ply+1, -player, alpha, beta, i, j, boardValue+delta)
 					bd[i][j] = UNSET
+					leafNodes += leaves
 					if n < value {
 						value = n
 					}
@@ -254,14 +294,14 @@ func alphaBeta(bd *Board, ply int, player int, alpha int, beta int, x int, y int
 						beta = value
 					}
 					if beta <= alpha {
-						return value
+						return value, leafNodes + 1
 					}
 				}
 			}
 		}
 	}
 
-	return value
+	return value, leafNodes
 }
 
 func printBoard(bd *Board) {
@@ -284,135 +324,152 @@ func printBoard(bd *Board) {
 	}
 }
 
+// 4-in-a-row where you don't want to have the middle 2
+var noMiddle2 = [4][4][2]int{
+	{{3, 0}, {2, 1}, {1, 2}, {0, 3}},
+	{{1, 0}, {2, 1}, {3, 2}, {4, 3}},
+	{{0, 1}, {1, 2}, {2, 3}, {3, 4}},
+	{{1, 4}, {2, 3}, {3, 2}, {4, 1}},
+}
+
+// 3-in-a-row where you don't want any 2 plus a blank
+var no2 = [4][3][2]int{
+
+	{{2, 0}, {1, 1}, {0, 2}},
+	{{0, 2}, {1, 3}, {2, 4}},
+	{{4, 2}, {3, 3}, {2, 4}},
+	{{4, 2}, {3, 1}, {2, 0}},
+}
+
 var losingTriplets [][][]int = [][][]int{
-	[][]int{[]int{0, 0}, []int{1, 0}, []int{2, 0}},
-	[][]int{[]int{0, 0}, []int{0, 1}, []int{0, 2}},
-	[][]int{[]int{0, 0}, []int{1, 1}, []int{2, 2}},
-	[][]int{[]int{1, 0}, []int{2, 0}, []int{3, 0}},
-	[][]int{[]int{1, 0}, []int{1, 1}, []int{1, 2}},
-	[][]int{[]int{1, 0}, []int{2, 1}, []int{3, 2}},
-	[][]int{[]int{2, 0}, []int{3, 0}, []int{4, 0}},
-	[][]int{[]int{2, 0}, []int{2, 1}, []int{2, 2}},
-	[][]int{[]int{2, 0}, []int{1, 1}, []int{0, 2}},
-	[][]int{[]int{2, 0}, []int{3, 1}, []int{4, 2}},
-	[][]int{[]int{3, 0}, []int{3, 1}, []int{3, 2}},
-	[][]int{[]int{3, 0}, []int{2, 1}, []int{1, 2}},
-	[][]int{[]int{4, 0}, []int{4, 1}, []int{4, 2}},
-	[][]int{[]int{4, 0}, []int{3, 1}, []int{2, 2}},
-	[][]int{[]int{0, 1}, []int{1, 1}, []int{2, 1}},
-	[][]int{[]int{0, 1}, []int{0, 2}, []int{0, 3}},
-	[][]int{[]int{0, 1}, []int{1, 2}, []int{2, 3}},
-	[][]int{[]int{1, 1}, []int{2, 1}, []int{3, 1}},
-	[][]int{[]int{1, 1}, []int{1, 2}, []int{1, 3}},
-	[][]int{[]int{1, 1}, []int{2, 2}, []int{3, 3}},
-	[][]int{[]int{2, 1}, []int{3, 1}, []int{4, 1}},
-	[][]int{[]int{2, 1}, []int{2, 2}, []int{2, 3}},
-	[][]int{[]int{2, 1}, []int{1, 2}, []int{0, 3}},
-	[][]int{[]int{2, 1}, []int{3, 2}, []int{4, 3}},
-	[][]int{[]int{3, 1}, []int{3, 2}, []int{3, 3}},
-	[][]int{[]int{3, 1}, []int{2, 2}, []int{1, 3}},
-	[][]int{[]int{4, 1}, []int{4, 2}, []int{4, 3}},
-	[][]int{[]int{4, 1}, []int{3, 2}, []int{2, 3}},
-	[][]int{[]int{0, 2}, []int{1, 2}, []int{2, 2}},
-	[][]int{[]int{0, 2}, []int{0, 3}, []int{0, 4}},
-	[][]int{[]int{0, 2}, []int{1, 3}, []int{2, 4}},
-	[][]int{[]int{1, 2}, []int{2, 2}, []int{3, 2}},
-	[][]int{[]int{1, 2}, []int{1, 3}, []int{1, 4}},
-	[][]int{[]int{1, 2}, []int{2, 3}, []int{3, 4}},
-	[][]int{[]int{2, 2}, []int{3, 2}, []int{4, 2}},
-	[][]int{[]int{2, 2}, []int{2, 3}, []int{2, 4}},
-	[][]int{[]int{2, 2}, []int{1, 3}, []int{0, 4}},
-	[][]int{[]int{2, 2}, []int{3, 3}, []int{4, 4}},
-	[][]int{[]int{3, 2}, []int{3, 3}, []int{3, 4}},
-	[][]int{[]int{3, 2}, []int{2, 3}, []int{1, 4}},
-	[][]int{[]int{4, 2}, []int{4, 3}, []int{4, 4}},
-	[][]int{[]int{4, 2}, []int{3, 3}, []int{2, 4}},
-	[][]int{[]int{0, 3}, []int{1, 3}, []int{2, 3}},
-	[][]int{[]int{1, 3}, []int{2, 3}, []int{3, 3}},
-	[][]int{[]int{2, 3}, []int{3, 3}, []int{4, 3}},
-	[][]int{[]int{0, 4}, []int{1, 4}, []int{2, 4}},
-	[][]int{[]int{1, 4}, []int{2, 4}, []int{3, 4}},
-	[][]int{[]int{2, 4}, []int{3, 4}, []int{4, 4}},
+	{{0, 0}, {1, 0}, {2, 0}},
+	{{0, 0}, {0, 1}, {0, 2}},
+	{{0, 0}, {1, 1}, {2, 2}},
+	{{1, 0}, {2, 0}, {3, 0}},
+	{{1, 0}, {1, 1}, {1, 2}},
+	{{1, 0}, {2, 1}, {3, 2}},
+	{{2, 0}, {3, 0}, {4, 0}},
+	{{2, 0}, {2, 1}, {2, 2}},
+	{{2, 0}, {1, 1}, {0, 2}},
+	{{2, 0}, {3, 1}, {4, 2}},
+	{{3, 0}, {3, 1}, {3, 2}},
+	{{3, 0}, {2, 1}, {1, 2}},
+	{{4, 0}, {4, 1}, {4, 2}},
+	{{4, 0}, {3, 1}, {2, 2}},
+	{{0, 1}, {1, 1}, {2, 1}},
+	{{0, 1}, {0, 2}, {0, 3}},
+	{{0, 1}, {1, 2}, {2, 3}},
+	{{1, 1}, {2, 1}, {3, 1}},
+	{{1, 1}, {1, 2}, {1, 3}},
+	{{1, 1}, {2, 2}, {3, 3}},
+	{{2, 1}, {3, 1}, {4, 1}},
+	{{2, 1}, {2, 2}, {2, 3}},
+	{{2, 1}, {1, 2}, {0, 3}},
+	{{2, 1}, {3, 2}, {4, 3}},
+	{{3, 1}, {3, 2}, {3, 3}},
+	{{3, 1}, {2, 2}, {1, 3}},
+	{{4, 1}, {4, 2}, {4, 3}},
+	{{4, 1}, {3, 2}, {2, 3}},
+	{{0, 2}, {1, 2}, {2, 2}},
+	{{0, 2}, {0, 3}, {0, 4}},
+	{{0, 2}, {1, 3}, {2, 4}},
+	{{1, 2}, {2, 2}, {3, 2}},
+	{{1, 2}, {1, 3}, {1, 4}},
+	{{1, 2}, {2, 3}, {3, 4}},
+	{{2, 2}, {3, 2}, {4, 2}},
+	{{2, 2}, {2, 3}, {2, 4}},
+	{{2, 2}, {1, 3}, {0, 4}},
+	{{2, 2}, {3, 3}, {4, 4}},
+	{{3, 2}, {3, 3}, {3, 4}},
+	{{3, 2}, {2, 3}, {1, 4}},
+	{{4, 2}, {4, 3}, {4, 4}},
+	{{4, 2}, {3, 3}, {2, 4}},
+	{{0, 3}, {1, 3}, {2, 3}},
+	{{1, 3}, {2, 3}, {3, 3}},
+	{{2, 3}, {3, 3}, {4, 3}},
+	{{0, 4}, {1, 4}, {2, 4}},
+	{{1, 4}, {2, 4}, {3, 4}},
+	{{2, 4}, {3, 4}, {4, 4}},
 }
 var winningQuads [][][]int = [][][]int{
-	[][]int{[]int{0, 0}, []int{1, 0}, []int{2, 0}, []int{3, 0}},
-	[][]int{[]int{0, 0}, []int{0, 1}, []int{0, 2}, []int{0, 3}},
-	[][]int{[]int{0, 0}, []int{1, 1}, []int{2, 2}, []int{3, 3}},
-	[][]int{[]int{0, 1}, []int{1, 1}, []int{2, 1}, []int{3, 1}},
-	[][]int{[]int{0, 1}, []int{0, 2}, []int{0, 3}, []int{0, 4}},
-	[][]int{[]int{0, 1}, []int{1, 2}, []int{2, 3}, []int{3, 4}},
-	[][]int{[]int{0, 2}, []int{1, 2}, []int{2, 2}, []int{3, 2}},
-	[][]int{[]int{0, 3}, []int{1, 3}, []int{2, 3}, []int{3, 3}},
-	[][]int{[]int{0, 4}, []int{1, 4}, []int{2, 4}, []int{3, 4}},
-	[][]int{[]int{1, 0}, []int{2, 0}, []int{3, 0}, []int{4, 0}},
-	[][]int{[]int{1, 0}, []int{1, 1}, []int{1, 2}, []int{1, 3}},
-	[][]int{[]int{1, 0}, []int{2, 1}, []int{3, 2}, []int{4, 3}},
-	[][]int{[]int{1, 1}, []int{2, 1}, []int{3, 1}, []int{4, 1}},
-	[][]int{[]int{1, 1}, []int{1, 2}, []int{1, 3}, []int{1, 4}},
-	[][]int{[]int{1, 1}, []int{2, 2}, []int{3, 3}, []int{4, 4}},
-	[][]int{[]int{1, 2}, []int{2, 2}, []int{3, 2}, []int{4, 2}},
-	[][]int{[]int{1, 3}, []int{2, 3}, []int{3, 3}, []int{4, 3}},
-	[][]int{[]int{1, 4}, []int{2, 4}, []int{3, 4}, []int{4, 4}},
-	[][]int{[]int{2, 0}, []int{2, 1}, []int{2, 2}, []int{2, 3}},
-	[][]int{[]int{2, 1}, []int{2, 2}, []int{2, 3}, []int{2, 4}},
-	[][]int{[]int{3, 0}, []int{3, 1}, []int{3, 2}, []int{3, 3}},
-	[][]int{[]int{3, 0}, []int{2, 1}, []int{1, 2}, []int{0, 3}},
-	[][]int{[]int{3, 1}, []int{3, 2}, []int{3, 3}, []int{3, 4}},
-	[][]int{[]int{3, 1}, []int{2, 2}, []int{1, 3}, []int{0, 4}},
-	[][]int{[]int{4, 0}, []int{4, 1}, []int{4, 2}, []int{4, 3}},
-	[][]int{[]int{4, 0}, []int{3, 1}, []int{2, 2}, []int{1, 3}},
-	[][]int{[]int{4, 1}, []int{4, 2}, []int{4, 3}, []int{4, 4}},
-	[][]int{[]int{4, 1}, []int{3, 2}, []int{2, 3}, []int{1, 4}},
+	{{0, 0}, {1, 0}, {2, 0}, {3, 0}},
+	{{0, 0}, {0, 1}, {0, 2}, {0, 3}},
+	{{0, 0}, {1, 1}, {2, 2}, {3, 3}},
+	{{0, 1}, {1, 1}, {2, 1}, {3, 1}},
+	{{0, 1}, {0, 2}, {0, 3}, {0, 4}},
+	{{0, 1}, {1, 2}, {2, 3}, {3, 4}},
+	{{0, 2}, {1, 2}, {2, 2}, {3, 2}},
+	{{0, 3}, {1, 3}, {2, 3}, {3, 3}},
+	{{0, 4}, {1, 4}, {2, 4}, {3, 4}},
+	{{1, 0}, {2, 0}, {3, 0}, {4, 0}},
+	{{1, 0}, {1, 1}, {1, 2}, {1, 3}},
+	{{1, 0}, {2, 1}, {3, 2}, {4, 3}},
+	{{1, 1}, {2, 1}, {3, 1}, {4, 1}},
+	{{1, 1}, {1, 2}, {1, 3}, {1, 4}},
+	{{1, 1}, {2, 2}, {3, 3}, {4, 4}},
+	{{1, 2}, {2, 2}, {3, 2}, {4, 2}},
+	{{1, 3}, {2, 3}, {3, 3}, {4, 3}},
+	{{1, 4}, {2, 4}, {3, 4}, {4, 4}},
+	{{2, 0}, {2, 1}, {2, 2}, {2, 3}},
+	{{2, 1}, {2, 2}, {2, 3}, {2, 4}},
+	{{3, 0}, {3, 1}, {3, 2}, {3, 3}},
+	{{3, 0}, {2, 1}, {1, 2}, {0, 3}},
+	{{3, 1}, {3, 2}, {3, 3}, {3, 4}},
+	{{3, 1}, {2, 2}, {1, 3}, {0, 4}},
+	{{4, 0}, {4, 1}, {4, 2}, {4, 3}},
+	{{4, 0}, {3, 1}, {2, 2}, {1, 3}},
+	{{4, 1}, {4, 2}, {4, 3}, {4, 4}},
+	{{4, 1}, {3, 2}, {2, 3}, {1, 4}},
 }
 
 var uniqueCells [][]int = [][]int{
-	[]int{0, 0},
-	[]int{0, 1},
-	[]int{0, 2},
-	[]int{1, 1},
-	[]int{1, 2},
-	[]int{2, 2},
+	{0, 0},
+	{0, 1},
+	{0, 2},
+	{1, 1},
+	{1, 2},
+	{2, 2},
 }
 
 var orderedCells [25][2]int = [25][2]int{
-	[2]int{1, 1},
-	[2]int{1, 3},
-	[2]int{3, 1},
-	[2]int{3, 3},
+	{1, 1},
+	{1, 3},
+	{3, 1},
+	{3, 3},
 
-	[2]int{2, 2},
+	{2, 2},
 
-	[2]int{1, 2},
-	[2]int{2, 1},
-	[2]int{2, 3},
-	[2]int{3, 2},
+	{1, 2},
+	{2, 1},
+	{2, 3},
+	{3, 2},
 
-	[2]int{0, 1},
-	[2]int{0, 2},
-	[2]int{0, 3},
+	{0, 1},
+	{0, 2},
+	{0, 3},
 
-	[2]int{1, 0},
-	[2]int{2, 0},
-	[2]int{3, 0},
+	{1, 0},
+	{2, 0},
+	{3, 0},
 
-	[2]int{1, 4},
-	[2]int{2, 4},
-	[2]int{3, 4},
+	{1, 4},
+	{2, 4},
+	{3, 4},
 
-	[2]int{4, 1},
-	[2]int{4, 2},
-	[2]int{4, 3},
+	{4, 1},
+	{4, 2},
+	{4, 3},
 
-	[2]int{0, 0},
-	[2]int{0, 4},
-	[2]int{4, 0},
-	[2]int{4, 4},
+	{0, 0},
+	{0, 4},
+	{4, 0},
+	{4, 4},
 }
 
 var scores [][]int = [][]int{
-	[]int{3, 3, 0, 3, 3},
-	[]int{3, 4, 1, 4, 3},
-	[]int{0, 1, 0, 1, 0},
-	[]int{3, 4, 1, 4, 3},
-	[]int{3, 3, 0, 3, 3},
+	{3, 3, 0, 3, 3},
+	{3, 4, 1, 4, 3},
+	{0, 1, 0, 1, 0},
+	{3, 4, 1, 4, 3},
+	{3, 3, 0, 3, 3},
 }
