@@ -34,7 +34,7 @@ Command line, text interface.  `squava` (the program) command line options:
 
 The multithreaded version adds:
 
-  -N Use this many threads (default 4)
+      -N Use this many threads (default 4)
 
 Alpha-Beta minimax, [algorithm](https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning)
 from Wikipedia. Since more than one move can result in the maximum numerical score,
