@@ -388,6 +388,13 @@ func alphaBeta(maxDepth int, bd *Board, ply int, player int, alpha int, beta int
 
 	leafNodes = 0
 
+	stopRecursing, delta := deltaValue(maxDepth, bd, ply, x, y, boardValue)
+	if stopRecursing {
+		return delta, 1
+	}
+
+	boardValue += delta
+
 	switch player {
 	case MAXIMIZER:
 		value = 2 * LOSS // Possible to score less than LOSS
@@ -395,12 +402,7 @@ func alphaBeta(maxDepth int, bd *Board, ply int, player int, alpha int, beta int
 			for j, marker := range row {
 				if marker == UNSET {
 					bd[i][j] = MAXIMIZER
-					stopRecursing, delta := deltaValue(maxDepth, bd, ply, x, y, boardValue)
-					if stopRecursing {
-						bd[i][j] = UNSET
-						return delta, leafNodes + 1
-					}
-					n, leaves := alphaBeta(maxDepth, bd, ply+1, MINIMIZER, alpha, beta, i, j, boardValue+delta)
+					n, leaves := alphaBeta(maxDepth, bd, ply+1, MINIMIZER, alpha, beta, i, j, boardValue)
 					bd[i][j] = UNSET
 					leafNodes += leaves
 					if n > value {
@@ -421,12 +423,7 @@ func alphaBeta(maxDepth int, bd *Board, ply int, player int, alpha int, beta int
 			for j, marker := range row {
 				if marker == UNSET {
 					bd[i][j] = player
-					stopRecursing, delta := deltaValue(maxDepth, bd, ply, x, y, boardValue)
-					if stopRecursing {
-						bd[i][j] = UNSET
-						return delta, leafNodes + 1
-					}
-					n, leaves := alphaBeta(maxDepth, bd, ply+1, -player, alpha, beta, i, j, boardValue+delta)
+					n, leaves := alphaBeta(maxDepth, bd, ply+1, -player, alpha, beta, i, j, boardValue)
 					bd[i][j] = UNSET
 					leafNodes += leaves
 					if n < value {
