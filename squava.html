@@ -3,7 +3,10 @@
 	<meta charset="UTF-8">
 	<title>The Game of Squava</title>
 <style>
-table { table-layout: fixed; }
+table {table-layout: fixed;}
+table td {height:20%; display:fixed;font-size:300%}
+table td input {height:50px; width:50px;}
+table td div {height:50px; width:50px;display:fixed;}
 </style>
 
 <script language="javascript">
@@ -29,13 +32,12 @@ var move_counter = 0;
 
 function clork(o, n, m) {
 	if (game_over) { return; }
-	var td = o.parentNode;
-	td.innerHTML = 'X';
+	var dv = document.getElementById("td"+n+m);
+	dv.innerHTML = 'X';
 	board[n][m] = -1;
 	color_winner(n, m);
 	++move_counter;
 	if (!game_over) {
-		document.f.ta.value = "";
 		mymove();
 	}
 }
@@ -43,9 +45,9 @@ function clork(o, n, m) {
 function mymove() {
 	if (game_over) { return; }
 
-	if (move_counter < 4)  { max_depth = 4; }
-	if (move_counter > 3)  { max_depth = 6; }
-	if (move_counter > 12) { max_depth = 8; }
+	if (move_counter < 4)  { max_depth = 2; }
+	if (move_counter > 3)  { max_depth = 2; }
+	if (move_counter > 12) { max_depth = 2; }
 
 	var max = 2*LOSS;
 
@@ -71,8 +73,6 @@ function mymove() {
 				}
 				board[i][j] = UNSET;
 
-				move_notification(i, j, val);
-
 				if (val >= max) {
 					if (val > max) {
 						max = val;
@@ -92,12 +92,6 @@ function mymove() {
 	board[p][q] = MAXIMIZER;
 	color_winner(p, q);
 	++move_counter;
-}
-
-function move_notification(i, j, val) {
-	var current_text = document.forms['f']['ta'].value;
-	var newtext = '<'+j+', '+i+'> :'+val;
-	document.forms['f']['ta'].value = current_text + "\n" + newtext;
 }
 
 // Returns an array, [stopRecursing bool, value int]
@@ -508,23 +502,43 @@ function cfirst() {
 <body>
 <h1>Squava</h1>
 	<form name="f">
-		<table border="0" width="100%" >
-		<tr>
-			<td>
-		<table border="1" class="fixed">
+		<table border="1" class="fixed" >
 		<tbody>
-			<tr><td valign="middle" align="center" style="height:20%;width:20%" id="td00"><input type="button" name="b00" onclick="clork(this, 0, 0);" /></td><td valign="middle" align="center" style="height:20%;width:20%" id="td10"><input type="button" name="b10" onclick="clork(this, 1, 0);" /></td><td valign="middle" align="center" style="height:20%;width:20%" id="td20"><input type="button" name="b20" onclick="clork(this, 2, 0);" /></td><td valign="middle" align="center" style="height:20%;width:20%" id="td30"><input type="button" name="b30" onclick="clork(this, 3, 0);" /></td><td valign="middle" align="center" style="height:20%;width:20%" id="td40"><input type="button" name="b40" onclick="clork(this, 4, 0);" /></td></tr>
-			<tr><td valign="middle" align="center" style="height:20%;width:20%" id="td01"><input type="button" name="b01" onclick="clork(this, 0, 1);" /></td><td valign="middle" align="center" style="height:20%;width:20%" id="td11"><input type="button" name="b11" onclick="clork(this, 1, 1);" /></td><td valign="middle" align="center" style="height:20%;width:20%" id="td21"><input type="button" name="b21" onclick="clork(this, 2, 1);" /></td><td valign="middle" align="center" style="height:20%;width:20%" id="td31"><input type="button" name="b31" onclick="clork(this, 3, 1);" /></td><td valign="middle" align="center" style="height:20%;width:20%" id="td41"><input type="button" name="b41" onclick="clork(this, 4, 1);" /></td></tr>
-			<tr><td valign="middle" align="center" style="height:20%;width:20%" id="td02"><input type="button" name="b02" onclick="clork(this, 0, 2);" /></td><td valign="middle" align="center" style="height:20%;width:20%" id="td12"><input type="button" name="b12" onclick="clork(this, 1, 2);" /></td><td valign="middle" align="center" style="height:20%;width:20%" id="td22"><input type="button" name="b22" onclick="clork(this, 2, 2);" /></td><td valign="middle" align="center" style="height:20%;width:20%" id="td32"><input type="button" name="b32" onclick="clork(this, 3, 2);" /></td><td valign="middle" align="center" style="height:20%;width:20%" id="td42"><input type="button" name="b42" onclick="clork(this, 4, 2);" /></td></tr>
-			<tr><td valign="middle" align="center" style="height:20%;width:20%" id="td03"><input type="button" name="b03" onclick="clork(this, 0, 3);" /></td><td valign="middle" align="center" style="height:20%;width:20%" id="td13"><input type="button" name="b13" onclick="clork(this, 1, 3);" /></td><td valign="middle" align="center" style="height:20%;width:20%" id="td23"><input type="button" name="b23" onclick="clork(this, 2, 3);" /></td><td valign="middle" align="center" style="height:20%;width:20%" id="td33"><input type="button" name="b33" onclick="clork(this, 3, 3);" /></td><td valign="middle" align="center" style="height:20%;width:20%" id="td43"><input type="button" name="b43" onclick="clork(this, 4, 3);" /></td></tr>
-			<tr><td valign="middle" align="center" style="height:20%;width:20%" id="td04"><input type="button" name="b04" onclick="clork(this, 0, 4);" /></td><td valign="middle" align="center" style="height:20%;width:20%" id="td14"><input type="button" name="b14" onclick="clork(this, 1, 4);" /></td><td valign="middle" align="center" style="height:20%;width:20%" id="td24"><input type="button" name="b24" onclick="clork(this, 2, 4);" /></td><td valign="middle" align="center" style="height:20%;width:20%" id="td34"><input type="button" name="b34" onclick="clork(this, 3, 4);" /></td><td valign="middle" align="center" style="height:20%;width:20%" id="td44"><input type="button" name="b44" onclick="clork(this, 4, 4);" /></td></tr>
+			<tr>
+					<td valign="middle" align="center" ><div id="td00"><input type="button" name="b00" onclick="clork(this, 0, 0);" /></div></td>
+					<td valign="middle" align="center" ><div id="td10"><input type="button" name="b10" onclick="clork(this, 1, 0);" /></div></td>
+					<td valign="middle" align="center" ><div id="td20"><input type="button" name="b20" onclick="clork(this, 2, 0);" /></div></td>
+					<td valign="middle" align="center" ><div id="td30"><input type="button" name="b30" onclick="clork(this, 3, 0);" /></div></td>
+					<td valign="middle" align="center" ><div id="td40"><input type="button" name="b40" onclick="clork(this, 4, 0);" /></div></td>
+			</tr>
+			<tr>
+					<td valign="middle" align="center" ><div id="td01"><input type="button" name="b01" onclick="clork(this, 0, 1);" /></div></td>
+					<td valign="middle" align="center" ><div id="td11"><input type="button" name="b11" onclick="clork(this, 1, 1);" /></div></td>
+					<td valign="middle" align="center" ><div id="td21"><input type="button" name="b21" onclick="clork(this, 2, 1);" /></div></td>
+					<td valign="middle" align="center" ><div id="td31"><input type="button" name="b31" onclick="clork(this, 3, 1);" /></div></td>
+					<td valign="middle" align="center" ><div id="td41"><input type="button" name="b41" onclick="clork(this, 4, 1);" /></div></td>
+			</tr>
+			<tr>
+					<td valign="middle" align="center" ><div id="td02"><input type="button" name="b02" onclick="clork(this, 0, 2);" /></div></td>
+					<td valign="middle" align="center" ><div id="td12"><input type="button" name="b12" onclick="clork(this, 1, 2);" /></div></td>
+					<td valign="middle" align="center" ><div id="td22"><input type="button" name="b22" onclick="clork(this, 2, 2);" /></div></td>
+					<td valign="middle" align="center" ><div id="td32"><input type="button" name="b32" onclick="clork(this, 3, 2);" /></div></td>
+					<td valign="middle" align="center" ><div id="td42"><input type="button" name="b42" onclick="clork(this, 4, 2);" /></div></td>
+			</tr>
+			<tr>
+					<td valign="middle" align="center" ><div id="td03"><input type="button" name="b03" onclick="clork(this, 0, 3);" /></div></td>
+					<td valign="middle" align="center" ><div id="td13"><input type="button" name="b13" onclick="clork(this, 1, 3);" /></div></td>
+					<td valign="middle" align="center" ><div id="td23"><input type="button" name="b23" onclick="clork(this, 2, 3);" /></div></td>
+					<td valign="middle" align="center" ><div id="td33"><input type="button" name="b33" onclick="clork(this, 3, 3);" /></div></td>
+					<td valign="middle" align="center" ><div id="td43"><input type="button" name="b43" onclick="clork(this, 4, 3);" /></div></td>
+			</tr>
+			<tr>
+<td valign="middle" align="center" ><div id="td04"><input type="button" name="b04" onclick="clork(this, 0, 4);" /></div></td>
+<td valign="middle" align="center" ><div id="td14"><input type="button" name="b14" onclick="clork(this, 1, 4);" /></div></td>
+<td valign="middle" align="center" ><div id="td24"><input type="button" name="b24" onclick="clork(this, 2, 4);" /></div></td>
+<td valign="middle" align="center" ><div id="td34"><input type="button" name="b34" onclick="clork(this, 3, 4);" /></div></td>
+<td valign="middle" align="center" ><div id="td44"><input type="button" name="b44" onclick="clork(this, 4, 4);" /></div></td></tr>
 		</tbody>
-		</table>
-			</td>
-			<td>
-				<textarea name="ta" rows="25" cols="25"></textarea>
-			</td>
-		</tr>
 		</table>
 		<br/>
 		<input type="button" name="rstbtn" value="New Game" onclick="resetgame();" />
