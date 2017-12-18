@@ -4,12 +4,15 @@
 	<title>The Game of Squava</title>
 <style>
 table {table-layout: fixed;}
-table td {height:20%; display:fixed;font-size:300%}
+table td {height:20%; font-size:300%}
 table td input {height:50px; width:50px;}
-table td div {height:50px; width:50px;display:fixed;}
+table td div {height:50px; width:50px;}
 </style>
 
 <script language="javascript">
+
+var bookOffense = false;
+var bookDefense = true;
 
 // The 5x5 array of places for 'X' or 'O' marks.
 // (0,0) in upper left, (4,4) in lower right.
@@ -42,12 +45,90 @@ function clork(n, m) {
 	}
 }
 
+var bookOffenseState = 0;
+var cX, cY;
+var first_moves = [
+    [0, 0],
+    [0, 1],
+    [1, 0],
+    [1, 1],
+];
+
 function mymove() {
 	if (game_over) { return; }
 
-	if (move_counter < 4)  { max_depth = 6; }
-	if (move_counter > 3)  { max_depth = 8; }
-	if (move_counter > 12) { max_depth = 10; }
+	if (bookOffense) {
+		switch (bookOffenseState) {
+		case 0: // First move
+			var r = Math.floor(Math.random()*4);
+			cX = first_moves[r][0];
+			cY = first_moves[r][1];
+			board[cX][cY] = MAXIMIZER;
+			document.getElementById('td'+cX+cY).innerHTML = 'O';
+			color_winner(cX, cY);
+			bookOffenseState = 1;
+			++move_counter;
+			return;
+			break;
+		case 1: // 2nd move
+			if (board[cX+3][cY+3]) {
+				// MINIMIZER played diagonal from cX,cY, try something else
+				cX += 3;
+				bookOffenseState = 3;
+			} else {
+				// Diagonal from cX,cY
+				cX += 3;
+				cY += 3;
+				bookOffenseState = 2;
+			}
+			board[cX][cY] = MAXIMIZER;
+			document.getElementById('td'+cX+cY).innerHTML = 'O';
+			color_winner(cX, cY);
+			++move_counter;
+			return;
+			break;
+		case 2: // 3rd move, after MAXIMIZER has ends of diagonal
+			// The corner(s) we want at at <cX-3,cY> or <cX,cY-3>
+			if(board[cX-3][cY]) {
+				cY -= 3;
+			} else {
+				cX -= 3;
+			}
+			board[cX][cY] = MAXIMIZER;
+			document.getElementById('td'+cX+cY).innerHTML = 'O';
+			color_winner(cX, cY);
+			bookOffense = false;
+			bookDefense = false;
+			return;
+			break;
+		case 3: // 3rd move, get other diagonal
+			alert("MAXIMIZER has row across top");
+			var tmp = cX;
+			cX = cY;
+			cY = tmp;
+			if (board[cX][cY]) {
+				// the other diagonal is taken.
+				bookOffense = false;
+				bookDefense = false;
+			} else {
+				board[cX][cY] = MAXIMIZER;
+				document.getElementById('td'+cX+cY).innerHTML = 'O';
+				color_winner(cX, cY);
+				++move_counter;
+				bookOffense = false;
+				bookDefense = false;
+				return;
+			}
+			break;
+		}
+	} 
+
+	if (bookDefense) {
+	}
+
+	if (move_counter < 4)  { max_depth = 2; }
+	if (move_counter > 3)  { max_depth = 2; }
+	if (move_counter > 12) { max_depth = 2; }
 
 	var max = 2*LOSS;
 
@@ -490,10 +571,15 @@ function resetgame() {
 	}
 	move_counter = 0;
 	game_over = false;
-	document.forms['f']['ta'].value = "";
+	bookOffense = false;
+	bookDefense = true;
 }
 
 function cfirst() {
+	bookOffenseState = 0;
+	bookOffense = true;
+	bookDefense = false;
+	game_over = false;
 	mymove();
 }
 </script>
