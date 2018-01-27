@@ -17,7 +17,7 @@ I chose "win", mainly because it's computationally easier to check for 4-in-a-ro
 as a win separately from 3-in-a-row as a loss. After all, every 4-in-a-row has
 3-in-a-row inside it.
 
-## Golang Program
+## Golang Programs
 
 Command line, text interface.  `squava` (the program) command line options:
 
@@ -145,7 +145,8 @@ stems from a losing 3-in-a-row created two moves before.
 
 There are some configurations it should avoid, but doesn't. Two adjacent marks
 flanked by empty cells means that player cannot play either of the empty cells
-without losing. It should probably take this into account.
+without losing. Only `squavathr`, the multi-threaded version, takes this
+into account.
 
 Other than tic-tac-toe, where it's feasible to check the entire game tree
 on every move, this is the first static valuation function I've written
@@ -155,11 +156,13 @@ that actually produces a worthwhile opponent, and it's also quite simple.
 
     go build squava.go
     go build squavathr.go  # Multi-goroutine version
-    go build sns.go
+    go build sns.go        # NegaScout
     go build playoff5.go
+    go build squavam.go    # Monte Carlo Tree Search
 
-`squava` will execute an Alpha-Beta minimax search for the best move. `sns` will execute
-a [NegaScout](https://www.cs.unm.edu/~aaron/downloads/qian_search.pdf) search.
+`squava` will execute an Alpha-Beta minimax search for the best move. `sns`
+will execute a
+[NegaScout](https://www.cs.unm.edu/~aaron/downloads/qian_search.pdf) search.
 
 ## Running the Golang programs
 

@@ -235,7 +235,11 @@ func (p *GameState) GetMoves() ([]int, bool) {
 			}
 		}
 	}
-	return moves, false
+	endOfGame := false
+	if len(moves) == 0 {
+		endOfGame = true
+	}
+	return moves, endOfGame
 }
 
 func (p *GameState) GetResult(playerjm int) float64 {
