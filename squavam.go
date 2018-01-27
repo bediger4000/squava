@@ -1,12 +1,13 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"math"
 	"math/rand"
 	"os"
-	"sort"
+	// "sort"
 	"time"
 )
 
@@ -27,16 +28,29 @@ type Node struct {
 
 func main() {
 
+	iterMax := flag.Int("i", 10000, "maximum iterations")
+	computerFirstPtr := flag.Bool("C", false, "Computer takes first move")
+	flag.Parse()
+
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	state := NewGameState()
+
+	if *computerFirstPtr {
+		state.playerJustMoved = 1
+	} else {
+		state.playerJustMoved = -1
+	}
 
 	// Why do we ignore the list of valid moves? Should be usable.
 	for _, endOfGame := state.GetMoves(); !endOfGame; _, endOfGame = state.GetMoves(){
 		var m int
 		fmt.Printf("%v\n", state)
 		if state.playerJustMoved == 1 {
-			m = UCT(state, 100000)
+			start := time.Now()
+			m = UCT(state, *iterMax)
+			end := time.Now()
+			fmt.Printf("My move: %d %d %v\n", m/5, m%5, end.Sub(start))
 		} else {
 			m = readMove(state.board)
 		}
@@ -77,6 +91,13 @@ func UCT(rootstate *GameState, itermax int) int {
 
 		moves, terminalNode := state.GetMoves()
 
+if len(moves) == 0 && !terminalNode {
+	fmt.Printf("Big problem, 0 moves, but not terminal?\n")
+	fmt.Printf("Moves: %v\n", moves)
+	fmt.Printf("State:\n%v\n", state)
+	fmt.Printf("State: %v\n", state.String2())
+}
+
 		for  !terminalNode  {
 			m := moves[rand.Intn(len(moves))]
 			state.DoMove(m)
@@ -88,9 +109,13 @@ func UCT(rootstate *GameState, itermax int) int {
 		}
 	}
 
-	sort.Sort(rootnode)
+/*
+	for idx, cn := range rootnode.childNodes {
+		fmt.Printf("child %d: %f  %v\n", idx, cn.UCB1(1.0), cn)
+	}
+*/
 
-	return rootnode.childNodes[0].move
+	return rootnode.bestMove().move
 }
 
 func NewNode(move int, parent *Node, state *GameState) *Node {
@@ -100,6 +125,23 @@ func NewNode(move int, parent *Node, state *GameState) *Node {
 	n.untriedMoves, _ = state.GetMoves()
 	n.playerJustMoved = state.playerJustMoved
 	return &n
+}
+
+func (p *Node) bestMove() *Node {
+	bestscore := math.SmallestNonzeroFloat64
+	var bestmove *Node
+	for _, c := range p.childNodes {
+		ucb1 := c.UCB1(1.0)
+		if ucb1 > bestscore {
+			bestscore = ucb1
+			bestmove = c
+		}
+	}
+	return bestmove
+}
+
+func (p *Node) String() string {
+	return fmt.Sprintf("%c, %d: %f/%f, %d %d, U:%v\n", "O_X"[p.playerJustMoved+1], p.move, p.wins, p.visits, len(p.untriedMoves), len(p.childNodes), p.untriedMoves)
 }
 
 func (p *Node) UCTSelectChild() *Node {
@@ -112,12 +154,15 @@ func (p *Node) UCTSelectChild() *Node {
 	   s = sorted(self.childNodes, key = lambda c: c.wins/c.visits + sqrt(2*log(self.visits)/c.visits))[-1]
 	   return s
 	*/
-	// p.childNodes[] kept sorted: see AddChild()
+/*
+	sort.Sort(p)
 	return p.childNodes[0]
+*/
+	return p.bestMove()
 }
 
 func (p *Node) UCB1(UCTK float64) float64 {
-	return p.wins/p.visits + UCTK*math.Sqrt(2.*math.Log(p.parentNode.visits)/p.visits)
+	return p.wins/(p.visits+math.SmallestNonzeroFloat64) + UCTK*math.Sqrt(2.*math.Log(p.parentNode.visits)/(p.visits+math.SmallestNonzeroFloat64))
 }
 
 func (p *Node) Len() int {
@@ -130,8 +175,8 @@ func (p *Node) Swap(i, j int) {
 
 func (p *Node) Less(i, j int) bool {
 	// Seems like a waste of time to calculate UCB1 value every Less() call
-	key1 := p.childNodes[i].UCB1(1.0)
-	key2 := p.childNodes[j].UCB1(1.0)
+	key1 := p.childNodes[i].UCB1(2.0)
+	key2 := p.childNodes[j].UCB1(2.0)
 	return key1 > key2
 }
 
@@ -144,7 +189,6 @@ func (p *Node) AddChild(move int, st *GameState) *Node {
 		}
 	}
 	p.childNodes = append(p.childNodes, n)
-	sort.Sort(p)
 	return n
 }
 
@@ -162,7 +206,7 @@ func NewGameState() *GameState {
 func (p *GameState) Clone() *GameState {
 	var st GameState
 	st.playerJustMoved = p.playerJustMoved
-	st.board = p.board
+	st.board = p.board  // copy since board has type [25]int
 	return &st
 }
 
@@ -206,6 +250,8 @@ func (p *GameState) GetResult(playerjm int) float64 {
 				}
 			}
 		}
+	}
+	for i := 0; i < 25; i++ {
 		for _, triplet := range losingTriplets[i] {
 			sum := p.board[triplet[0]] + p.board[triplet[1]] + p.board[triplet[2]]
 			if sum == 3 || sum == -3 {
@@ -217,7 +263,6 @@ func (p *GameState) GetResult(playerjm int) float64 {
 			}
 		}
 	}
-	// I think it never gets here
 	return 0.0
 }
 
@@ -233,6 +278,10 @@ func (p *GameState) String() string {
 		}
 	}
 	return s
+}
+
+func (p *GameState) String2() string {
+    return fmt.Sprintf("%d, %v", p.playerJustMoved, p.board)
 }
 
 func readMove(bd [25]int) int {
