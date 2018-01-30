@@ -237,7 +237,10 @@ func (p *GameState) GetMoves() ([]int, bool) {
 }
 
 func (p *GameState) GetResult(playerjm int) float64 {
-	for i := 0; i < 25; i++ {
+	// Need to check all 4-in-a-row wins before checking
+	// any 3-in-a-row losses, otherwise the result ends
+	// up wrong.
+	for _, i := range important_cells {
 		for _, quad := range winningQuads[i] {
 			sum := p.board[quad[0]] + p.board[quad[1]] + p.board[quad[2]] + p.board[quad[3]]
 			if sum == 4 || sum == -4 {
@@ -249,7 +252,7 @@ func (p *GameState) GetResult(playerjm int) float64 {
 			}
 		}
 	}
-	for i := 0; i < 25; i++ {
+	for _, i := range important_cells {
 		for _, triplet := range losingTriplets[i] {
 			sum := p.board[triplet[0]] + p.board[triplet[1]] + p.board[triplet[2]]
 			if sum == 3 || sum == -3 {
@@ -261,7 +264,7 @@ func (p *GameState) GetResult(playerjm int) float64 {
 			}
 		}
 	}
-	return 0.0
+	return 0.0  // Should probably never get here.
 }
 
 func (p *GameState) String() string {
