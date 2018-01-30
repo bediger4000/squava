@@ -28,6 +28,7 @@ type Node struct {
 func main() {
 
 	iterMax := flag.Int("i", 10000, "maximum iterations")
+	uctk := flag.Float64("u", 1.00, "UCTK explore/exploit coefficient")
 	computerFirstPtr := flag.Bool("C", false, "Computer takes first move")
 	flag.Parse()
 
@@ -46,7 +47,7 @@ func main() {
 		fmt.Printf("%v\n", state)
 		if state.playerJustMoved == 1 {
 			start := time.Now()
-			m = UCT(state, *iterMax)
+			m = UCT(state, *iterMax, *uctk)
 			end := time.Now()
 			fmt.Printf("My move: %d %d %v\n", m/5, m%5, end.Sub(start))
 		} else {
@@ -68,7 +69,7 @@ func main() {
 	}
 }
 
-func UCT(rootstate *GameState, itermax int) int {
+func UCT(rootstate *GameState, itermax int, UCTK float64) int {
 	rootnode := NewNode(-1, nil, rootstate)
 
 	for i := 0; i < itermax; i++ {
@@ -77,7 +78,7 @@ func UCT(rootstate *GameState, itermax int) int {
 		state := rootstate.Clone()  // need to leave rootstate alone
 
 		for len(node.untriedMoves) == 0 && len(node.childNodes) > 0 {
-			node = node.UCTSelectChild()  // updates node
+			node = node.UCTSelectChild(UCTK)  // updates node
 			state.DoMove(node.move)
 		}
 
@@ -115,7 +116,7 @@ func UCT(rootstate *GameState, itermax int) int {
 	}
 */
 
-	return rootnode.bestMove().move
+	return rootnode.bestMove(UCTK).move
 }
 
 func NewNode(move int, parent *Node, state *GameState) *Node {
@@ -135,11 +136,11 @@ func NewNode(move int, parent *Node, state *GameState) *Node {
 // because a change to that array invalidates the
 // choice of "best" move. Also, does UCB1() score for
 // a given child node stay the same? I don't think it does.
-func (p *Node) bestMove() *Node {
+func (p *Node) bestMove(UCTK float64) *Node {
 	bestscore := math.SmallestNonzeroFloat64
 	var bestmove *Node
 	for _, c := range p.childNodes {
-		ucb1 := c.UCB1(1.0)
+		ucb1 := c.UCB1(UCTK)
 		if ucb1 > bestscore {
 			bestscore = ucb1
 			bestmove = c
@@ -152,8 +153,8 @@ func (p *Node) String() string {
 	return fmt.Sprintf("%c, %d: %f/%f, %d %d, U:%v\n", "O_X"[p.playerJustMoved+1], p.move, p.wins, p.visits, len(p.untriedMoves), len(p.childNodes), p.untriedMoves)
 }
 
-func (p *Node) UCTSelectChild() *Node {
-	return p.bestMove()
+func (p *Node) UCTSelectChild(UCTK float64) *Node {
+	return p.bestMove(UCTK)
 }
 
 func (p *Node) UCB1(UCTK float64) float64 {
