@@ -7,7 +7,6 @@ import (
 	"math"
 	"math/rand"
 	"os"
-	// "sort"
 	"time"
 )
 
@@ -35,11 +34,10 @@ func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	state := NewGameState()
+	state.playerJustMoved = -1
 
 	if *computerFirstPtr {
 		state.playerJustMoved = 1
-	} else {
-		state.playerJustMoved = -1
 	}
 
 	// Why do we ignore the list of valid moves? Should be usable.
@@ -75,34 +73,36 @@ func UCT(rootstate *GameState, itermax int) int {
 
 	for i := 0; i < itermax; i++ {
 
-		node := rootnode
-		state := rootstate.Clone()
+		node := rootnode  // node will get modified, rootnode also modified
+		state := rootstate.Clone()  // need to leave rootstate alone
 
 		for len(node.untriedMoves) == 0 && len(node.childNodes) > 0 {
-			node = node.UCTSelectChild()
+			node = node.UCTSelectChild()  // updates node
 			state.DoMove(node.move)
 		}
 
+		// This condition creates a child node from an untried move
+		// (if any exist), makes the move in state, and makes node
+		// the child node.
 		if len(node.untriedMoves) > 0 {
 			m := node.untriedMoves[rand.Intn(len(node.untriedMoves))]
 			state.DoMove(m)
-			node = node.AddChild(m, state)
+			node = node.AddChild(m, state) // updates node with the child
 		}
 
 		moves, terminalNode := state.GetMoves()
 
-if len(moves) == 0 && !terminalNode {
-	fmt.Printf("Big problem, 0 moves, but not terminal?\n")
-	fmt.Printf("Moves: %v\n", moves)
-	fmt.Printf("State:\n%v\n", state)
-	fmt.Printf("State: %v\n", state.String2())
-}
-
+		// starting with current state, pick a random
+		// branch of the game tree, all the way to a win/loss.
 		for  !terminalNode  {
 			m := moves[rand.Intn(len(moves))]
 			state.DoMove(m)
 			moves, terminalNode = state.GetMoves()
 		}
+
+		// node now points to a board where a player won
+		// and the other lost. Trace back up the tree, updating
+		// each node's wins and visit count.
 
 		for ; node != nil; node = node.parentNode {
 			node.Update(state.GetResult(node.playerJustMoved))
@@ -127,6 +127,14 @@ func NewNode(move int, parent *Node, state *GameState) *Node {
 	return &n
 }
 
+// Since there's at most 25 moves to consider,
+// just look through them rather than incur
+// sorting overhead. It seems like maybe caching
+// the best child node might help performance. Have
+// to figure out how to track changes to childNodes[],
+// because a change to that array invalidates the
+// choice of "best" move. Also, does UCB1() score for
+// a given child node stay the same? I don't think it does.
 func (p *Node) bestMove() *Node {
 	bestscore := math.SmallestNonzeroFloat64
 	var bestmove *Node
@@ -145,19 +153,6 @@ func (p *Node) String() string {
 }
 
 func (p *Node) UCTSelectChild() *Node {
-	/*
-	   """ Use the UCB1 formula to select a child node. Often a constant
-	   UCTK is applied so we have lambda c: c.wins/c.visits + UCTK *
-	   sqrt(2*log(self.visits)/c.visits to vary the amount of exploration
-	   versus exploitation.
-	   """
-	   s = sorted(self.childNodes, key = lambda c: c.wins/c.visits + sqrt(2*log(self.visits)/c.visits))[-1]
-	   return s
-	*/
-/*
-	sort.Sort(p)
-	return p.childNodes[0]
-*/
 	return p.bestMove()
 }
 
@@ -165,21 +160,10 @@ func (p *Node) UCB1(UCTK float64) float64 {
 	return p.wins/(p.visits+math.SmallestNonzeroFloat64) + UCTK*math.Sqrt(2.*math.Log(p.parentNode.visits)/(p.visits+math.SmallestNonzeroFloat64))
 }
 
-func (p *Node) Len() int {
-	return len(p.childNodes)
-}
-
-func (p *Node) Swap(i, j int) {
-	p.childNodes[i], p.childNodes[j] = p.childNodes[j], p.childNodes[i]
-}
-
-func (p *Node) Less(i, j int) bool {
-	// Seems like a waste of time to calculate UCB1 value every Less() call
-	key1 := p.childNodes[i].UCB1(2.0)
-	key2 := p.childNodes[j].UCB1(2.0)
-	return key1 > key2
-}
-
+// AddChild creates a new *Node with the state of st
+// argument, takes move out of p.untriedMoves, adds
+// the new *Node to the array of child nodes, returns
+// the new *Node, which is then a child of p.
 func (p *Node) AddChild(move int, st *GameState) *Node {
 	n := NewNode(move, p, st)
 	for i, m := range p.untriedMoves {
@@ -216,29 +200,38 @@ func (p *GameState) DoMove(move int) {
 }
 
 func (p *GameState) GetMoves() ([]int, bool) {
-	var moves []int
-	for i := 0; i < 25; i++ {
-		if p.board[i] == 0 {
-			moves = append(moves, i)
-		} else {
-			for _, quad := range winningQuads[i] {
-				sum := p.board[quad[0]] + p.board[quad[1]] + p.board[quad[2]] + p.board[quad[3]]
-				if sum == 4 || sum == -4 {
-					return []int{}, true
-				}
+
+	// Only have to check the 9 cells in important_cells[]
+	// for 4 or 3 in a row configs.
+	for _, m := range important_cells {
+		for _, quad := range winningQuads[m] {
+			sum := p.board[quad[0]] + p.board[quad[1]] + p.board[quad[2]] + p.board[quad[3]]
+			if sum == 4 || sum == -4 {
+				return []int{}, true
 			}
-			for _, triplet := range losingTriplets[i] {
-				sum := p.board[triplet[0]] + p.board[triplet[1]] + p.board[triplet[2]]
-				if sum == 3 || sum == -3 {
-					return []int{}, true
-				}
+		}
+		for _, triplet := range losingTriplets[m] {
+			sum := p.board[triplet[0]] + p.board[triplet[1]] + p.board[triplet[2]]
+			if sum == 3 || sum == -3 {
+				return []int{}, true
 			}
 		}
 	}
-	endOfGame := false
-	if len(moves) == 0 {
-		endOfGame = true
+
+	// Get here, p.board does not represent a win or a loss.
+	// Pick out empty cells in p.board for a list of valid moves.
+	// I don't believe "cat" games exist in Squava, but this code
+	// handles that case.
+
+	endOfGame := true
+	var moves []int
+	for i := 0; i < 25; i++ {
+		if p.board[i] == 0 {
+			endOfGame = false
+			moves = append(moves, i)
+		}
 	}
+
 	return moves, endOfGame
 }
 
@@ -316,6 +309,7 @@ func readMove(bd [25]int) int {
 	return m
 }
 
+var important_cells [9]int = [9]int{2, 7, 10, 11, 12, 13, 14, 17, 22}
 // 25 rows only to make looping easier. The filled-in
 // rows are the only quads you actually have to check
 // to find out if there's a win
