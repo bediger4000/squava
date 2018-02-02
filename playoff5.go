@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"math/rand"
+	"mcts"
 	"negascout"
 	"time"
 )
@@ -18,7 +19,7 @@ const (
 
 type Player interface {
 	Name() string
-	MakeMove(int, int, int) // x,y corrds, type of player (MINIMIZER, MAXIMIZER)
+	MakeMove(int, int, int) // x,y coords, type of player (MINIMIZER, MAXIMIZER)
 	SetDepth(int)
 	ChooseMove() (int, int, int, int) // x,y coords of move, value, leaf node count
 	PrintBoard()
@@ -168,6 +169,8 @@ func createPlayers(firstType, secondType string, maxDepth int, deterministic boo
 		first = abbook.New(deterministic, maxDepth)
 	case "G":
 		first = abgeo.New(deterministic, maxDepth)
+	case "M":
+		first = mcts.New(deterministic, maxDepth)
 	}
 
 	switch secondType {
@@ -179,6 +182,8 @@ func createPlayers(firstType, secondType string, maxDepth int, deterministic boo
 		second = abbook.New(deterministic, maxDepth)
 	case "G":
 		second = abgeo.New(deterministic, maxDepth)
+	case "M":
+		second = mcts.New(deterministic, maxDepth)
 	}
 
 	return first, second
