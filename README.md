@@ -36,6 +36,13 @@ The multithreaded version adds:
 
       -N Use this many threads (default 4)
 
+The Monte Carlo Tree Search version has these options:
+
+      -C       Computer takes first move
+      -i int   maximum iterations (default 10000)
+      -u float UCTK explore/exploit coefficient (default 1)
+
+
 Alpha-Beta minimax, [algorithm](https://en.wikipedia.org/wiki/Alpha%E2%80%93beta_pruning)
 from Wikipedia. Since more than one move can result in the maximum numerical score,
 `squava` keeps a list of all moves that have that maximum numerical score, and chooses
@@ -59,6 +66,11 @@ goroutine gets a game-state struct, does the alpha-beta minimaxing
 for a single move, and puts the result on another buffered channel.
 The main goroutine waits for results and chooses the maximum-valued
 move to play.
+
+The [Monte Carlo Tree Search algorithm](http://mcts.ai/) comes very
+directly from [Python code](http://mcts.ai/code/python.html). The default
+number of iterations (10000) seems far too small in practice. I find playing
+it more fun than playing any of the minimaxing versions.
 
 ### Book
 
@@ -163,10 +175,11 @@ that actually produces a worthwhile opponent, and it's also quite simple.
 `squava` will execute an Alpha-Beta minimax search for the best move. `sns`
 will execute a
 [NegaScout](https://www.cs.unm.edu/~aaron/downloads/qian_search.pdf) search.
+`squavam` does a Monte Carlo Tree Search to probably find the best move.
 
 ## Running the Golang programs
 
-`sns` and `squava` behave mostly identically.
+`sns`, `squava`, `squavathr` and `squavam` behave mostly identically.
 
     $ ./squava
     Your move:
@@ -265,10 +278,14 @@ order them differently:
     4  _ _ _ _ _ 
     ...
 
-You can specify what the first player is (`-1 x`) and what the second
-player is (`-2 x`). The 3 options are 'A' for an alpha/beta minimaxing
-player, 'N' for a Negascout minimaxing player, and 'B' for an alpha/beta
-minimaxing player that has an opening for its first 3 moves
+You can select the players' algorithms.
+You specify what the first player by `-1 x`, and the second player by `-2 x`.
+
+* 'A' for an alpha/beta minimaxing player
+* 'N' for a Negascout minimaxing player
+* 'B' for an alpha/beta minimaxing player that has an opening for its first 3 moves.
+* 'G' for an alpha/beta minimaxing player that tries to stay out of bad positions
+* 'M' for a Monte Carlo Tree Search version, 150,000 iterations
 
 ## JavaScript Program
 
