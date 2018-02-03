@@ -33,10 +33,7 @@ type MCTS struct {
 }
 
 func New(deterministic bool, maxdepth int) *MCTS {
-	var r MCTS
-	r.game = new(GameState)
-	r.iterations = 150000
-	return &r
+	return &MCTS{ game:NewGameState(), iterations:150000 }
 }
 
 func (p *MCTS) Name() string {
@@ -44,7 +41,6 @@ func (p *MCTS) Name() string {
 }
 
 func (p *MCTS) MakeMove(x, y int, player int) {
-	// fmt.Printf("MakeMove(%d,%d) <%d>, player %d\n", x, y, 5*x+y, player)
 	p.game.board[5*x + y] = player
 	p.game.playerJustMoved = player
 }
@@ -56,9 +52,9 @@ func (p *MCTS) SetDepth(moveCounter int) {
 // move and its score.
 func (p *MCTS) ChooseMove() (xcoord int, ycoord int, value int, leafcount int) {
 
-	// fmt.Printf("ChooseMove(%p) gamestate %p\n", p, p.game)
-
 	move, leaves, value := UCT(p.game, p.iterations, 1.00)
+
+	p.game.DoMove(move)
 
 	a := move / 5
 	b := move % 5
@@ -67,7 +63,7 @@ func (p *MCTS) ChooseMove() (xcoord int, ycoord int, value int, leafcount int) {
 }
 
 func (p *MCTS) PrintBoard() {
-	fmt.Printf("%v", p)
+	fmt.Printf("%v", p.game)
 }
 
 func (p *MCTS) SetScores(randomize bool) {
@@ -176,13 +172,13 @@ func (p *Node) UCB1(UCTK float64) float64 {
 // the new *Node to the array of child nodes, returns
 // the new *Node, which is then a child of p.
 func (p *Node) AddChild(move int, st *GameState) *Node {
-	n := NewNode(move, p, st)
 	for i, m := range p.untriedMoves {
 		if m == move {
 			p.untriedMoves = append(p.untriedMoves[:i], p.untriedMoves[i+1:]...)
 			break
 		}
 	}
+	n := NewNode(move, p, st)
 	p.childNodes = append(p.childNodes, n)
 	return n
 }
@@ -210,7 +206,7 @@ func (p *GameState) DoMove(move int) {
 	p.board[move] = p.playerJustMoved
 }
 
-func (p *GameState) GetMoves() ([]int, bool) {
+func (p GameState) GetMoves() ([]int, bool) {
 
 	// Only have to check the 9 cells in important_cells[]
 	// for 4 or 3 in a row configs.
