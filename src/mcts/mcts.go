@@ -28,14 +28,14 @@ const (
 )
 
 type MCTS struct {
-	game *GameState
+	game       *GameState
 	iterations int
-	leafNodeCount   int
 }
 
 func New(deterministic bool, maxdepth int) *MCTS {
 	var r MCTS
 	r.game = new(GameState)
+	r.iterations = 150000
 	return &r
 }
 
@@ -44,7 +44,9 @@ func (p *MCTS) Name() string {
 }
 
 func (p *MCTS) MakeMove(x, y int, player int) {
-	p.game.DoMove(5*x+y)
+	// fmt.Printf("MakeMove(%d,%d) <%d>, player %d\n", x, y, 5*x+y, player)
+	p.game.board[5*x + y] = player
+	p.game.playerJustMoved = player
 }
 
 func (p *MCTS) SetDepth(moveCounter int) {
@@ -54,12 +56,14 @@ func (p *MCTS) SetDepth(moveCounter int) {
 // move and its score.
 func (p *MCTS) ChooseMove() (xcoord int, ycoord int, value int, leafcount int) {
 
-	move, value := UCT(p.game, p.iterations, 1.00)
+	// fmt.Printf("ChooseMove(%p) gamestate %p\n", p, p.game)
 
-	a := move/5
-	b := move%5
+	move, leaves, value := UCT(p.game, p.iterations, 1.00)
 
-	return a, b, value, p.leafNodeCount
+	a := move / 5
+	b := move % 5
+
+	return a, b, value, leaves
 }
 
 func (p *MCTS) PrintBoard() {
@@ -75,21 +79,21 @@ func (p *MCTS) FindWinner() int {
 	if w > 0.0 {
 		return m
 	}
-	return -m
+	return 0
 }
 
-func UCT(rootstate *GameState, itermax int, UCTK float64) (int, int) {
+func UCT(rootstate *GameState, itermax int, UCTK float64) (int, int, int) {
 
 	leafNodeCount := 0
 	rootnode := NewNode(-1, nil, rootstate)
 
 	for i := 0; i < itermax; i++ {
 
-		node := rootnode  // node will get modified, rootnode also modified
-		state := rootstate.Clone()  // need to leave rootstate alone
+		node := rootnode           // reset node to root of tree of nodes
+		state := rootstate.Clone() // start at rootstate, rootnode's GameState
 
 		for len(node.untriedMoves) == 0 && len(node.childNodes) > 0 {
-			node = node.UCTSelectChild(UCTK)  // updates node
+			node = node.UCTSelectChild(UCTK) // updates node
 			state.DoMove(node.move)
 		}
 
@@ -99,19 +103,22 @@ func UCT(rootstate *GameState, itermax int, UCTK float64) (int, int) {
 		if len(node.untriedMoves) > 0 {
 			m := node.untriedMoves[rand.Intn(len(node.untriedMoves))]
 			state.DoMove(m)
-			node = node.AddChild(m, state) // updates node with the child
+			node = node.AddChild(m, state)
+			// node now represents m, the previously-untried move.
 		}
 
 		moves, terminalNode := state.GetMoves()
+		if !terminalNode {
+			leafNodeCount++
+		}
 
 		// starting with current state, pick a random
 		// branch of the game tree, all the way to a win/loss.
-		for  !terminalNode  {
+		for !terminalNode {
 			m := moves[rand.Intn(len(moves))]
 			state.DoMove(m)
 			moves, terminalNode = state.GetMoves()
 		}
-		leafNodeCount++
 
 		// node now points to a board where a player won
 		// and the other lost. Trace back up the tree, updating
@@ -122,13 +129,8 @@ func UCT(rootstate *GameState, itermax int, UCTK float64) (int, int) {
 		}
 	}
 
-/*
-	for idx, cn := range rootnode.childNodes {
-		fmt.Printf("child %d: %f  %v\n", idx, cn.UCB1(1.0), cn)
-	}
-*/
-
-	return rootnode.bestMove(UCTK).move, leafNodeCount
+	bestMove := rootnode.bestMove(UCTK)
+	return bestMove.move, leafNodeCount, int(1000.*bestMove.UCB1(1.00))
 }
 
 func NewNode(move int, parent *Node, state *GameState) *Node {
@@ -199,7 +201,7 @@ func NewGameState() *GameState {
 func (p *GameState) Clone() *GameState {
 	var st GameState
 	st.playerJustMoved = p.playerJustMoved
-	st.board = p.board  // copy since board has type [25]int
+	st.board = p.board // copy since board has type [25]int
 	return &st
 }
 
@@ -272,7 +274,7 @@ func (p *GameState) GetResult(playerjm int) float64 {
 			}
 		}
 	}
-	return 0.0  // Should probably never get here.
+	return 0.0 // Should probably never get here.
 }
 
 func (p *GameState) String() string {
@@ -290,6 +292,7 @@ func (p *GameState) String() string {
 }
 
 var important_cells [9]int = [9]int{2, 7, 10, 11, 12, 13, 14, 17, 22}
+
 // 25 rows only to make looping easier. The filled-in
 // rows are the only quads you actually have to check
 // to find out if there's a win
