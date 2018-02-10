@@ -1,0 +1,490 @@
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>The Game of Squava</title>
+	<style>
+		table {table-layout: fixed;}
+		table td {height:20%; font-size:300%}
+		table td input {height:50px; width:50px;}
+		table td div {height:50px; width:50px;}
+	</style>
+
+<script language="javascript">
+
+// 25-element array of numbers. "empty" is 0,
+// 1 is "the computer", who plays 'O',
+// -1 is "the human", who plays 'X',
+// Maps to 5x5 like this:
+//
+//    0   1   2   3   4
+//    5   6   7   8   9
+//   10  11  12  13  14
+//   15  16  17  18  16
+//   20  21  22  23  24
+//
+
+var game_over = false;
+var MAXIMIZER = 1;
+var MINIMIZER = -1;
+var UNSET = 0;
+
+var UCTK = 1.0;
+var game_state = null;
+
+// You only have to check these for 4-in-a-row, or 3-in-a-row.
+var important_cells = [2, 7, 10, 11, 12, 13, 14, 17, 22];
+
+// Interface to the computer game play.
+function clork(mv) {
+	if (game_over) { return; }
+	if (null == game_state) {
+		game_state = NewGameState();
+	}
+	document.getElementById('td'+mv).innerHTML = 'X';
+	DoMove(game_state, mv);
+	color_winner(mv);
+	if (!game_over) {
+		choosemove();  // Computer (this program) chooses move
+	}
+}
+
+// This has 25 entries, even though we only check the
+// cells numbered in important_cells[]. Easier indexing.
+var winningQuads = [
+	[], [],
+	[[0, 1, 2, 3], [1, 2, 3, 4], [2, 7, 12, 17]],
+	[], [], [], [],
+	[[5, 6, 7, 8], [6, 7, 8, 9], [7, 12, 17, 22]],
+	[], [], 
+	[[0, 5, 10, 15], [5, 10, 15, 20]],
+	[[1, 6, 11, 16], [6, 11, 16, 21], [3, 7, 11, 15], [5, 11, 17, 23]],
+	[[10, 11, 12, 13], [11, 12, 13, 14], [4, 8, 12, 16], [8, 12, 16, 20], [0, 6, 12, 18], [6, 12, 18, 24]],
+	[[3, 8, 13, 18], [8, 13, 18, 23], [1, 7, 13, 19], [9, 13, 17, 21]],
+	[[4, 9, 14, 19], [9, 14, 19, 24]],
+	[], [], 
+	[[15, 16, 17, 18], [16, 17, 18, 19]],
+	[], [], [], [],
+	[[20, 21, 22, 23], [21, 22, 23, 24]],
+	[], [],
+];
+
+var losingTriplets = [
+	[], [],
+	[[0, 1, 2], [1, 2, 3], [2, 3, 4], [2, 7, 12], [2, 6, 10], [14, 8, 2]],
+	[], [], [], [], 
+	[[5, 6, 7], [6, 7, 8], [7, 8, 9], [2, 7, 12], [7, 12, 17], [3, 7, 11], [7, 11, 15], [1, 7, 13], [7, 13, 19]],
+	[], [], 
+	[[10, 11, 12], [0, 5, 10], [5, 10, 15], [10, 15, 20], [2, 6, 10], [10, 16, 22]],
+	[[10, 11, 12], [11, 12, 13], [1, 6, 11], [6, 11, 16], [11, 16, 21], [3, 7, 11], [7, 11, 15], [5, 11, 17], [11, 17, 23]],
+	[[10, 11, 12], [11, 12, 13], [12, 13, 14], [2, 7, 12], [7, 12, 17], [12, 17, 22], [0, 6, 12], [6, 12, 18], [12, 18, 24], [4, 8, 12], [8, 12, 16], [12, 16, 20]],
+	[[11, 12, 13], [12, 13, 14], [3, 8, 13], [8, 13, 18], [13, 18, 23], [1, 7, 13], [7, 13, 19], [21, 17, 13], [17, 13, 9]],
+	[[12, 13, 14], [4, 9, 14], [9, 14, 19], [14, 19, 24], [22, 18, 14], [14, 8, 2]],
+	[], [],
+	[[15, 16, 17], [16, 17, 18], [17, 18, 19], [7, 12, 17], [12, 17, 22], [5, 11, 17], [11, 17, 23], [21, 17, 13], [17, 13, 9]],
+	[], [], [], [],
+	[[20, 21, 22], [21, 22, 23], [22, 23, 24], [12, 17, 22], [10, 16, 22], [22, 18, 14]],
+	[], [],
+];
+
+function GetResult(p, playerjm) {
+
+	var cached = p.cachedResults[playerjm+1];
+	if (cached >= 0.0) {
+		return cached;
+	}
+
+	// Need to check all 4-in-a-row wins before checking
+	// any 3-in-a-row losses, otherwise the result ends
+	// up wrong.
+	for (var i in important_cells) {
+		if (important_cells[i]) {
+			var row = winningQuads[important_cells[i]];
+			for (var ci in row) {
+				var quad = row[ci];
+				var sum = p.board[quad[0]] + p.board[quad[1]] + p.board[quad[2]] + p.board[quad[3]];
+				if (sum == 4 || sum == -4) {
+					if (sum == 4*playerjm) {
+						p.cachedResults[playerjm+1] = 1.0;
+						return 1.0;
+					} else {
+						p.cachedResults[playerjm+1] = 0.0;
+						return 0.0;
+					}
+				}
+			}
+		}
+	}
+	for (var i in important_cells) {
+		if (important_cells[i]) {
+			var row = losingTriplets[important_cells[i]];
+			for (var lt in row) {
+				var triplet = row[lt];
+				var sum = p.board[triplet[0]] + p.board[triplet[1]] + p.board[triplet[2]];
+				if (sum == 3 || sum == -3) {
+					if (sum == 3*playerjm) {
+						p.cachedResults[playerjm+1] = 1.0;
+						return 0.0;
+					} else {
+						p.cachedResults[playerjm+1] = 0.0;
+						return 1.0;
+					}
+				}
+			}
+		}
+	}
+	return 0.0;  // Should probably never get here.
+}
+
+
+function NewGameState() {
+	return {
+		playerJustMoved: MINIMIZER,
+		board: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+		cachedResults: [-1.0, -1.0, -1.0],
+	};
+}
+
+function resetCachedResults(p) {
+	p.cachedResults[0] = -1;
+	p.cachedResults[1] = -1;
+	p.cachedResults[2] = -1;
+}
+
+function NewNode(move, parent, state) {
+	var a = GetMoves(state);
+	return {
+		move: move,
+		parentNode: parent,
+		untriedMoves: a[0],
+		playerJustMoved: state.playerJustMoved,
+		childNodes: [],
+		wins:0,
+		visits:0,
+	};
+}
+
+function GetMoves(p) {
+
+	// Only have to check the 9 cells in important_cells[]
+	// for 4 or 3 in a row configs.
+	for (var ic in important_cells) {
+		var m = important_cells[ic];
+		if (p.board[m]) {
+			var row = winningQuads[m];
+			for (var q in row) {
+				var quad = row[q];
+				var sum = p.board[quad[0]] + p.board[quad[1]] + p.board[quad[2]] + p.board[quad[3]];
+				if (sum == 4 || sum == -4) {
+					return [[], true];
+				}
+			}
+			row = losingTriplets[m];
+			for (var t in row) {
+				var triplet = row[t];
+				var sum = p.board[triplet[0]] + p.board[triplet[1]] + p.board[triplet[2]];
+				if (sum == 3 || sum == -3) {
+					return [[], true];
+				}
+			}
+		}
+	}
+
+	// Get here, p.board does not represent a win or a loss.
+	// Pick out empty cells in p.board for a list of valid moves.
+	// I don't believe "cat" games exist in Squava, but this code
+	// handles that case.
+
+	var endOfGame = true;
+	var moves = [];
+	for (var i = 0; i < 25; i++) {
+		if (p.board[i] == UNSET) {
+			endOfGame = false;
+			moves.push(i);
+		}
+	}
+
+	return [moves, endOfGame];
+}
+
+function choosemove() {
+	var iterMax = parseInt(document.f.iterations.value);
+	var m = UCT(game_state, iterMax, UCTK)
+	DoMove(game_state, m);
+	document.getElementById('td'+m).innerHTML = 'O';
+	color_winner(m);
+}
+
+
+function color_winner(mv) {
+	if (!game_over) {
+		var we = check_winner(mv);
+		if (we[1]) {
+			game_over = true;
+			// Find winning quad, color it green
+			for (var idx in important_cells) {
+				var row = winningQuads[important_cells[idx]];
+				for (var i in row) {
+					var quad = row[i];
+					var sum = game_state.board[quad[0]] + game_state.board[quad[1]] + game_state.board[quad[2]] + game_state.board[quad[3]];
+					if (sum == 4 || sum == -4) {
+						for (var j in quad) {
+							var td = document.getElementById('td'+quad[j]);
+							td.style.backgroundColor = "#00FF00";
+						}
+						return;
+					}
+				}
+			}
+			// Find losing triplet, color it red.
+			for (var idx in important_cells) {
+				var row = losingTriplets[important_cells[idx]];
+				for (var i in row) {
+					var triplet = row[i];
+					var sum = game_state.board[triplet[0]] + game_state.board[triplet[1]] + game_state.board[triplet[2]];
+					if (sum == 3 || sum == -3) {
+						for (var j in triplet) {
+							var td = document.getElementById('td'+triplet[j]);
+							td.style.backgroundColor = "red";
+						}
+						return;
+					}
+				}
+			}
+		}
+	}
+}
+
+function Clone(p) {
+	var st = NewGameState();
+	st.playerJustMoved = p.playerJustMoved;
+	st.board = p.board.slice()
+	return st;
+}
+
+function UCTSelectChild(node, UCTK) {
+	return bestMove(node, UCTK);
+}
+
+function bestMove(node, UCTK) {
+	var bestscore = 0.0;
+	var bestmove = null;
+	for (var c in node.childNodes) {
+		var ucb1 = UCB1(node.childNodes[c], UCTK);
+		if (ucb1 > bestscore) {
+			bestscore = ucb1;
+			bestmove = node.childNodes[c];
+		}
+	}
+	return bestmove;
+}
+
+function UCB1(p, UCTK) {
+	var visits = p.parentNode? p.parentNode.visits: 0;
+	return p.wins/(p.visits+Number.MIN_VALUE) + UCTK*Math.sqrt(2.*Math.log(visits)/(p.visits+Number.MIN_VALUE));
+}
+
+function DoMove(p, move) {
+	p.playerJustMoved = -p.playerJustMoved;
+	p.board[move] = p.playerJustMoved;
+}
+
+function AddChild(p, move, st) {
+	var n = NewNode(move, p, st);
+	var idx = p.untriedMoves.indexOf(move);
+	if (idx > -1) {
+		p.untriedMoves.splice(idx, 1);
+	}
+	p.childNodes.push(n);
+	return n;
+}
+
+function UCT(rootstate, itermax, UCTK) {
+
+	rootnode = NewNode(-1, null, rootstate);
+
+	for (var i = 0; i < itermax; i++) {
+
+		node = rootnode;  // node will get modified, rootnode also modified
+		state = Clone(rootstate);  // need to leave rootstate alone
+
+		while (node.untriedMoves.length == 0 && node.childNodes.length > 0) {
+			var n = node;
+			node = UCTSelectChild(node, UCTK);  // updates node
+if (!node) {
+	console.log("selected node null, original node:");
+	console.log("  move "+n.move);
+	console.log("  parentNode "+n.parentNode);
+	console.log("  untriedMoves "+n.untriedMoves.length);
+	console.log("  playerJustMoved "+n.playerJustMoved);
+	console.log("  childNodes length "+n.childNodes.length);
+	console.log("  wins "+n.wins);
+	console.log("  visits "+n.visits);
+	for (var c in n.childNodes) {
+		var cn = n.childNodes[c];
+		console.log("Child "+c+", move "+cn.move+", has UCB1 "+UCB1(cn, UCTK));
+	}
+}
+			DoMove(state, node.move);
+		}
+
+		// This condition creates a child node from an untried move
+		// (if any exist), makes the move in state, and makes node
+		// the child node.
+		if (node.untriedMoves.length > 0) {
+			var m = node.untriedMoves[Math.floor(Math.random() * node.untriedMoves.length)];
+			DoMove(state, m);
+			node = AddChild(node, m, state); // updates node with the child
+		}
+
+		var x = GetMoves(state);
+		var moves = x[0]; 
+		var terminalNode = x[1];
+
+		// starting with current state, pick a random
+		// branch of the game tree, all the way to a win/loss.
+		while  (!terminalNode)  {
+			var m = moves[Math.floor(Math.random()*moves.length)];
+			DoMove(state, m);
+			x = GetMoves(state);
+			moves = x[0];
+			terminalNode = x[1];
+		}
+
+		// node now points to a board where a player won
+		// and the other lost. Trace back up the tree, updating
+		// each node's wins and visit count.
+
+		resetCachedResults(state);
+		for (; node != null; node = node.parentNode) {
+			Update(node, GetResult(state, node.playerJustMoved));
+		}
+	}
+
+	var best = bestMove(rootnode, UCTK);
+	return best.move;
+}
+
+function Update(p, result) {
+	p.visits++;
+	p.wins += result;
+}
+
+// Look through the board, decide if (1) the game is over,
+// and who won. So, two return values, which is a direct
+// carry-over from the Golang version. Formal arguments
+// x, y are the coords of the last move performed, so that
+// check_winner() doesn't have to look through all losing
+// triplets, and all winning quads, just the ones involving
+// the last move.
+function check_winner(mv) {
+	// Get here, all 25 spots on board filled, no winning quadruplet
+	// I don't know if this can ever happen.
+	// Need to check all 4-in-a-row wins before checking
+	// any 3-in-a-row losses, otherwise the result ends
+	// up wrong.
+	for (var i in important_cells) {
+		var row = winningQuads[important_cells[i]];
+		for (var wq in row) {
+			var quad = row[wq];
+			var sum = game_state.board[quad[0]] + game_state.board[quad[1]] + game_state.board[quad[2]] + game_state.board[quad[3]];
+			if (sum == 4) {
+				return [1, true];
+			}
+			if (sum == -4) {
+				return [-1, true];
+			}
+		}
+	}
+	for (var i in important_cells) {
+		var row = losingTriplets[important_cells[i]];
+		for (var lt in row) {
+			var triplet = row[lt];
+			var sum = game_state.board[triplet[0]] + game_state.board[triplet[1]] + game_state.board[triplet[2]];
+			if (sum == 3) {
+				return [-1, true];
+			}
+			if (sum == -3) {
+				return [1, true];
+			}
+		}
+	}
+
+	for (var i in game_state.board) {
+		if (!game_state.board[i]) {
+			// There's an open cell, game's not over
+			return [0, false];
+		}
+	}
+
+	// Cat game, I don't think this happens.
+	return [0, true];
+}
+
+function resetgame() {
+	for (var i = 0; i < 25; ++i) {
+		var tdob = document.getElementById('td'+i);
+		tdob.innerHTML = '<input type="button" name="b'+i+'" onclick="clork('+i+');" />';
+		tdob.style.backgroundColor = 'white';
+	}
+	game_over = false;
+	game_state = null;
+}
+
+function cfirst() {
+	game_over = false;
+	game_state = null;
+	choosemove();
+}
+</script>
+
+</head>
+<body>
+<h1>Squava - Monte Carlo Tree Search</h1>
+	<form name="f">
+		<p>Iterations:&nbsp;<input type="text" name="iterations" value="10000" size="8" /></p>
+		<table border="1" class="fixed" >
+		<tbody>
+			<tr>
+					<td valign="middle" align="center" ><div id="td0"><input type="button" name="b0" onclick="clork(0);" /></div></td>
+					<td valign="middle" align="center" ><div id="td1"><input type="button" name="b1" onclick="clork(1);" /></div></td>
+					<td valign="middle" align="center" ><div id="td2"><input type="button" name="b2" onclick="clork(2);" /></div></td>
+					<td valign="middle" align="center" ><div id="td3"><input type="button" name="b3" onclick="clork(3);" /></div></td>
+					<td valign="middle" align="center" ><div id="td4"><input type="button" name="b4" onclick="clork(4);" /></div></td>
+			</tr>
+			<tr>
+					<td valign="middle" align="center" ><div id="td5"><input type="button" name="b5" onclick="clork(5);" /></div></td>
+					<td valign="middle" align="center" ><div id="td6"><input type="button" name="b6" onclick="clork(6);" /></div></td>
+					<td valign="middle" align="center" ><div id="td7"><input type="button" name="b7" onclick="clork(7);" /></div></td>
+					<td valign="middle" align="center" ><div id="td8"><input type="button" name="b8" onclick="clork(8);" /></div></td>
+					<td valign="middle" align="center" ><div id="td9"><input type="button" name="b9" onclick="clork(9);" /></div></td>
+			</tr>
+			<tr>
+					<td valign="middle" align="center" ><div id="td10"><input type="button" name="b10" onclick="clork(10);" /></div></td>
+					<td valign="middle" align="center" ><div id="td11"><input type="button" name="b11" onclick="clork(11);" /></div></td>
+					<td valign="middle" align="center" ><div id="td12"><input type="button" name="b12" onclick="clork(12);" /></div></td>
+					<td valign="middle" align="center" ><div id="td13"><input type="button" name="b13" onclick="clork(13);" /></div></td>
+					<td valign="middle" align="center" ><div id="td14"><input type="button" name="b14" onclick="clork(14);" /></div></td>
+			</tr>
+			<tr>
+					<td valign="middle" align="center" ><div id="td15"><input type="button" name="b15" onclick="clork(15);" /></div></td>
+					<td valign="middle" align="center" ><div id="td16"><input type="button" name="b16" onclick="clork(16);" /></div></td>
+					<td valign="middle" align="center" ><div id="td17"><input type="button" name="b17" onclick="clork(17);" /></div></td>
+					<td valign="middle" align="center" ><div id="td18"><input type="button" name="b18" onclick="clork(18);" /></div></td>
+					<td valign="middle" align="center" ><div id="td19"><input type="button" name="b19" onclick="clork(19);" /></div></td>
+			</tr>
+			<tr>
+					<td valign="middle" align="center" ><div id="td20"><input type="button" name="b20" onclick="clork(20);" /></div></td>
+					<td valign="middle" align="center" ><div id="td21"><input type="button" name="b21" onclick="clork(21);" /></div></td>
+					<td valign="middle" align="center" ><div id="td22"><input type="button" name="b22" onclick="clork(22);" /></div></td>
+					<td valign="middle" align="center" ><div id="td23"><input type="button" name="b23" onclick="clork(23);" /></div></td>
+					<td valign="middle" align="center" ><div id="td24"><input type="button" name="b24" onclick="clork(24);" /></div></td>
+			</tr>
+		</tbody>
+		</table>
+		<br/>
+		<input type="button" name="rstbtn" value="New Game" onclick="resetgame();" />
+		<br/>
+		<input type="button" name="firstbtn" value="Computer First" onclick="cfirst();" />
+	</form>
+</body>
+</html>
