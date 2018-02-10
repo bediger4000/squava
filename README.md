@@ -10,6 +10,8 @@ player can win outright, or lose.
 
 You can [play the JavaScript version](https://rawgit.com/bediger4000/squava/master/squava.html) right now!
 
+You can [play a Monte Carlo Tree Search version](https://rawgit.com/bediger4000/squava/master/squavam.html) right now!
+
 The rules have an ambiguity, in that it isn't clear what to do if a single marker
 fills in a row of 3, say, and a diagonal of 4. Does that player win or lose?
 
