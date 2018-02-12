@@ -10,9 +10,12 @@ import (
 	"time"
 )
 
+const UNSET = 0
+
 type GameState struct {
 	playerJustMoved int
 	board           [25]int
+	cachedResults   [3]float64
 }
 
 type Node struct {
@@ -58,6 +61,7 @@ func main() {
 
 	fmt.Printf("%v\n", state)
 
+	state.resetCachedResults()
 	lastPlayer := string("O_X"[state.playerJustMoved+1])
 	switch state.GetResult(state.playerJustMoved) {
 	case 1.0:
@@ -105,6 +109,7 @@ func UCT(rootstate *GameState, itermax int, UCTK float64) int {
 		// and the other lost. Trace back up the tree, updating
 		// each node's wins and visit count.
 
+		state.resetCachedResults()
 		for ; node != nil; node = node.parentNode {
 			node.Update(state.GetResult(node.playerJustMoved))
 		}
@@ -195,6 +200,12 @@ func (p *GameState) Clone() *GameState {
 	return &st
 }
 
+func (p *GameState) resetCachedResults() {
+	p.cachedResults[0] = -1;
+	p.cachedResults[1] = -1;
+	p.cachedResults[2] = -1;
+}
+
 func (p *GameState) DoMove(move int) {
 	p.playerJustMoved = -p.playerJustMoved
 	p.board[move] = p.playerJustMoved
@@ -237,29 +248,41 @@ func (p *GameState) GetMoves() ([]int, bool) {
 }
 
 func (p *GameState) GetResult(playerjm int) float64 {
+	cached := p.cachedResults[playerjm+1]
+	if (cached >= 0.0) {
+		return cached
+	}
 	// Need to check all 4-in-a-row wins before checking
 	// any 3-in-a-row losses, otherwise the result ends
 	// up wrong.
 	for _, i := range important_cells {
-		for _, quad := range winningQuads[i] {
-			sum := p.board[quad[0]] + p.board[quad[1]] + p.board[quad[2]] + p.board[quad[3]]
-			if sum == 4 || sum == -4 {
-				if sum == 4*playerjm {
-					return 1.0
-				} else {
-					return 0.0
+		if p.board[i] != UNSET {
+			for _, quad := range winningQuads[i] {
+				sum := p.board[quad[0]] + p.board[quad[1]] + p.board[quad[2]] + p.board[quad[3]]
+				if sum == 4 || sum == -4 {
+					if sum == 4*playerjm {
+						p.cachedResults[playerjm+1] = 1.0
+						return 1.0
+					} else {
+						p.cachedResults[playerjm+1] = 0.0
+						return 0.0
+					}
 				}
 			}
 		}
 	}
 	for _, i := range important_cells {
-		for _, triplet := range losingTriplets[i] {
-			sum := p.board[triplet[0]] + p.board[triplet[1]] + p.board[triplet[2]]
-			if sum == 3 || sum == -3 {
-				if sum == 3*playerjm {
-					return 0.0
-				} else {
-					return 1.0
+		if p.board[i] != UNSET {
+			for _, triplet := range losingTriplets[i] {
+				sum := p.board[triplet[0]] + p.board[triplet[1]] + p.board[triplet[2]]
+				if sum == 3 || sum == -3 {
+					if sum == 3*playerjm {
+						p.cachedResults[playerjm+1] = 0.0
+						return 0.0
+					} else {
+						p.cachedResults[playerjm+1] = 1.0
+						return 1.0
+					}
 				}
 			}
 		}
