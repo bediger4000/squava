@@ -97,7 +97,7 @@ function GetResult(p, playerjm) {
 	// any 3-in-a-row losses, otherwise the result ends
 	// up wrong.
 	for (var i in important_cells) {
-		if (important_cells[i]) {
+		if (p.board[important_cells[i]]) {
 			var row = winningQuads[important_cells[i]];
 			for (var ci in row) {
 				var quad = row[ci];
@@ -115,23 +115,24 @@ function GetResult(p, playerjm) {
 		}
 	}
 	for (var i in important_cells) {
-		if (important_cells[i]) {
+		if (p.board[important_cells[i]]) {
 			var row = losingTriplets[important_cells[i]];
 			for (var lt in row) {
 				var triplet = row[lt];
 				var sum = p.board[triplet[0]] + p.board[triplet[1]] + p.board[triplet[2]];
 				if (sum == 3 || sum == -3) {
 					if (sum == 3*playerjm) {
-						p.cachedResults[playerjm+1] = 1.0;
+						p.cachedResults[playerjm+1] = 0.0;
 						return 0.0;
 					} else {
-						p.cachedResults[playerjm+1] = 0.0;
+						p.cachedResults[playerjm+1] = 1.0;
 						return 1.0;
 					}
 				}
 			}
 		}
 	}
+alert("should not get here");
 	return 0.0;  // Should probably never get here.
 }
 
@@ -298,6 +299,7 @@ function AddChild(p, move, st) {
 	return n;
 }
 
+// UCT() constructs a part of a game tree from the current game state.
 function UCT(rootstate, itermax, UCTK) {
 
 	rootnode = NewNode(-1, null, rootstate);
