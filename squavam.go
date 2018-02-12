@@ -216,16 +216,20 @@ func (p *GameState) GetMoves() ([]int, bool) {
 	// Only have to check the 9 cells in important_cells[]
 	// for 4 or 3 in a row configs.
 	for _, m := range important_cells {
-		for _, quad := range winningQuads[m] {
-			sum := p.board[quad[0]] + p.board[quad[1]] + p.board[quad[2]] + p.board[quad[3]]
-			if sum == 4 || sum == -4 {
-				return []int{}, true
+		if p.board[m] != UNSET {
+			for _, quad := range winningQuads[m] {
+				sum := p.board[quad[0]] + p.board[quad[1]] + p.board[quad[2]] + p.board[quad[3]]
+				if sum == 4 || sum == -4 {
+					return []int{}, true
+				}
 			}
 		}
-		for _, triplet := range losingTriplets[m] {
-			sum := p.board[triplet[0]] + p.board[triplet[1]] + p.board[triplet[2]]
-			if sum == 3 || sum == -3 {
-				return []int{}, true
+		if p.board[m] != UNSET {
+			for _, triplet := range losingTriplets[m] {
+				sum := p.board[triplet[0]] + p.board[triplet[1]] + p.board[triplet[2]]
+				if sum == 3 || sum == -3 {
+					return []int{}, true
+				}
 			}
 		}
 	}
