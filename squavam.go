@@ -44,17 +44,28 @@ func main() {
 		state.playerJustMoved = 1
 	}
 
-	// Why do we ignore the list of valid moves? Should be usable.
+	var movesNode *Node
 	for _, endOfGame := state.GetMoves(); !endOfGame; _, endOfGame = state.GetMoves(){
 		var m int
 		fmt.Printf("%v\n", state)
 		if state.playerJustMoved == 1 {
 			start := time.Now()
-			m = UCT(state, *iterMax, *uctk)
+			movesNode = UCT(state, *iterMax, *uctk, movesNode)
+			movesnode.parentNode = nil
+			m = movesNode.move
 			end := time.Now()
 			fmt.Printf("My move: %d %d %v\n", m/5, m%5, end.Sub(start))
 		} else {
 			m = readMove(state.board)
+			if movesNode != nil {
+				for _, childNode := range movesNode.childNodes {
+					if childNode.move == m {
+						movesNode = childNode
+						movesNode.parentNode = nil
+						break
+					}
+				}
+			}
 		}
 		state.DoMove(m)
 	}
@@ -73,8 +84,13 @@ func main() {
 	}
 }
 
-func UCT(rootstate *GameState, itermax int, UCTK float64) int {
-	rootnode := NewNode(-1, nil, rootstate)
+func UCT(rootstate *GameState, itermax int, UCTK float64, rootnode *Node) *Node {
+
+	if rootnode == nil {
+		rootnode = NewNode(-1, nil, rootstate)
+	} else {
+		rootnode.playerJustMoved = rootstate.playerJustMoved
+	}
 
 	for i := 0; i < itermax; i++ {
 
@@ -121,7 +137,7 @@ func UCT(rootstate *GameState, itermax int, UCTK float64) int {
 	}
 */
 
-	return rootnode.bestMove(UCTK).move
+	return rootnode.bestMove(UCTK)
 }
 
 func NewNode(move int, parent *Node, state *GameState) *Node {
