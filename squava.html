@@ -46,6 +46,7 @@ function clork(n, m) {
 }
 
 var bookOffenseState = 0;
+var bookDefenseState = 0;
 var cX, cY;
 var first_moves = [
     [0, 0],
@@ -58,77 +59,16 @@ function mymove() {
 	if (game_over) { return; }
 
 	if (bookOffense) {
-		switch (bookOffenseState) {
-		case 0: // First move
-			var r = Math.floor(Math.random()*4);
-			cX = first_moves[r][0];
-			cY = first_moves[r][1];
-			board[cX][cY] = MAXIMIZER;
-			document.getElementById('td'+cX+cY).innerHTML = 'O';
-			color_winner(cX, cY);
-			bookOffenseState = 1;
-			++move_counter;
-			return;
-			break;
-		case 1: // 2nd move
-			if (board[cX+3][cY+3]) {
-				// MINIMIZER played diagonal from cX,cY, try something else
-				cX += 3;
-				bookOffenseState = 3;
-			} else {
-				// Diagonal from cX,cY
-				cX += 3;
-				cY += 3;
-				bookOffenseState = 2;
-			}
-			board[cX][cY] = MAXIMIZER;
-			document.getElementById('td'+cX+cY).innerHTML = 'O';
-			color_winner(cX, cY);
-			++move_counter;
-			return;
-			break;
-		case 2: // 3rd move, after MAXIMIZER has ends of diagonal
-			// The corner(s) we want at at <cX-3,cY> or <cX,cY-3>
-			if(board[cX-3][cY]) {
-				cY -= 3;
-			} else {
-				cX -= 3;
-			}
-			board[cX][cY] = MAXIMIZER;
-			document.getElementById('td'+cX+cY).innerHTML = 'O';
-			color_winner(cX, cY);
-			bookOffense = false;
-			bookDefense = false;
-			return;
-			break;
-		case 3: // 3rd move, get other diagonal
-			alert("MAXIMIZER has row across top");
-			var tmp = cX;
-			cX = cY;
-			cY = tmp;
-			if (board[cX][cY]) {
-				// the other diagonal is taken.
-				bookOffense = false;
-				bookDefense = false;
-			} else {
-				board[cX][cY] = MAXIMIZER;
-				document.getElementById('td'+cX+cY).innerHTML = 'O';
-				color_winner(cX, cY);
-				++move_counter;
-				bookOffense = false;
-				bookDefense = false;
-				return;
-			}
-			break;
-		}
+		bookOffense = bookOffender();
 	} 
 
 	if (bookDefense) {
+		bookDefense = bookDefender();
 	}
 
-	if (move_counter < 4)  { max_depth = 2; }
-	if (move_counter > 3)  { max_depth = 2; }
-	if (move_counter > 12) { max_depth = 2; }
+	if (move_counter < 4)  { max_depth = 4; }
+	if (move_counter > 3)  { max_depth = 6; }
+	if (move_counter > 12) { max_depth = 8; }
 
 	var max = 2*LOSS;
 
@@ -173,6 +113,88 @@ function mymove() {
 	board[p][q] = MAXIMIZER;
 	color_winner(p, q);
 	++move_counter;
+}
+
+function bookDefender() {
+	switch (bookOffenseState) {
+	case 0: // Response to first move
+		bookOffenseState = 1;
+		++move_counter;
+		return true;
+		break;
+	case 1: // Response to human's 2nd move
+		return false;
+		break;
+	}
+	return false;
+}
+
+function bookOffender() {
+	switch (bookOffenseState) {
+	case 0: // First move
+		var r = Math.floor(Math.random()*4);
+		cX = first_moves[r][0];
+		cY = first_moves[r][1];
+		board[cX][cY] = MAXIMIZER;
+		document.getElementById('td'+cX+cY).innerHTML = 'O';
+		color_winner(cX, cY);
+		bookOffenseState = 1;
+		++move_counter;
+		return true;
+		break;
+	case 1: // 2nd move
+		if (board[cX+3][cY+3]) {
+			// MINIMIZER played diagonal from cX,cY, try something else
+			cX += 3;
+			bookOffenseState = 3;
+		} else {
+			// Diagonal from cX,cY
+			cX += 3;
+			cY += 3;
+			bookOffenseState = 2;
+		}
+		board[cX][cY] = MAXIMIZER;
+		document.getElementById('td'+cX+cY).innerHTML = 'O';
+		color_winner(cX, cY);
+		++move_counter;
+		return true;
+		break;
+	case 2: // 3rd move, after MAXIMIZER has ends of diagonal
+		// The corner(s) we want at at <cX-3,cY> or <cX,cY-3>
+		if(board[cX-3][cY]) {
+			cY -= 3;
+		} else {
+			cX -= 3;
+		}
+		board[cX][cY] = MAXIMIZER;
+		document.getElementById('td'+cX+cY).innerHTML = 'O';
+		color_winner(cX, cY);
+		bookOffense = false;
+		bookDefense = false;
+		return false;
+		break;
+	case 3: // 3rd move, get other diagonal
+		var tmp = cX;
+		cX = cY;
+		cY = tmp;
+		if (board[cX][cY]) {
+			// the other diagonal is taken.
+			bookOffense = false;
+			bookDefense = false;
+			// Need to figure out what to do here.
+			return false;
+		} else {
+			board[cX][cY] = MAXIMIZER;
+			document.getElementById('td'+cX+cY).innerHTML = 'O';
+			color_winner(cX, cY);
+			++move_counter;
+			bookOffense = false;
+			bookDefense = false;
+			return false;
+		}
+		break;
+	}
+	return false;
 }
 
 // Returns an array, [stopRecursing bool, value int]
