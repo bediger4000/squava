@@ -51,7 +51,7 @@ func main() {
 		if state.playerJustMoved == 1 {
 			start := time.Now()
 			movesNode = UCT(state, *iterMax, *uctk, movesNode)
-			movesnode.parentNode = nil
+			movesNode.parentNode = nil
 			m = movesNode.move
 			end := time.Now()
 			fmt.Printf("My move: %d %d %v\n", m/5, m%5, end.Sub(start))
