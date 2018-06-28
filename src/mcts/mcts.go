@@ -9,6 +9,7 @@ import (
 type GameState struct {
 	playerJustMoved int
 	board           [25]int
+	cachedResults   [3]float64
 }
 
 type Node struct {
@@ -30,10 +31,11 @@ const (
 type MCTS struct {
 	game       *GameState
 	iterations int
+	movesNode  *Node
 }
 
 func New(deterministic bool, maxdepth int) *MCTS {
-	return &MCTS{ game:NewGameState(), iterations:150000 }
+	return &MCTS{game: NewGameState(), iterations: 300000}
 }
 
 func (p *MCTS) Name() string {
@@ -41,8 +43,9 @@ func (p *MCTS) Name() string {
 }
 
 func (p *MCTS) MakeMove(x, y int, player int) {
-	p.game.board[5*x + y] = player
+	p.game.board[5*x+y] = player
 	p.game.playerJustMoved = player
+	p.updateMoves(5*x+y)
 }
 
 func (p *MCTS) SetDepth(moveCounter int) {
@@ -52,7 +55,12 @@ func (p *MCTS) SetDepth(moveCounter int) {
 // move and its score.
 func (p *MCTS) ChooseMove() (xcoord int, ycoord int, value int, leafcount int) {
 
-	move, leaves, value := UCT(p.game, p.iterations, 1.00)
+	bestnode, leaves, value := UCT(p.game, p.iterations, 1.00, p.movesNode)
+
+	p.movesNode = bestnode
+	p.movesNode.parentNode = nil
+
+	move := p.movesNode.move
 
 	p.game.DoMove(move)
 
@@ -78,10 +86,15 @@ func (p *MCTS) FindWinner() int {
 	return 0
 }
 
-func UCT(rootstate *GameState, itermax int, UCTK float64) (int, int, int) {
+func UCT(rootstate *GameState, itermax int, UCTK float64, rootnode *Node) (*Node, int, int) {
 
 	leafNodeCount := 0
-	rootnode := NewNode(-1, nil, rootstate)
+
+	if rootnode == nil {
+		rootnode = NewNode(-1, nil, rootstate)
+	} else {
+		rootnode.playerJustMoved = rootstate.playerJustMoved
+	}
 
 	for i := 0; i < itermax; i++ {
 
@@ -104,9 +117,6 @@ func UCT(rootstate *GameState, itermax int, UCTK float64) (int, int, int) {
 		}
 
 		moves, terminalNode := state.GetMoves()
-		if !terminalNode {
-			leafNodeCount++
-		}
 
 		// starting with current state, pick a random
 		// branch of the game tree, all the way to a win/loss.
@@ -116,17 +126,20 @@ func UCT(rootstate *GameState, itermax int, UCTK float64) (int, int, int) {
 			moves, terminalNode = state.GetMoves()
 		}
 
+		leafNodeCount++
+
 		// node now points to a board where a player won
 		// and the other lost. Trace back up the tree, updating
 		// each node's wins and visit count.
 
+		state.resetCachedResults()
 		for ; node != nil; node = node.parentNode {
 			node.Update(state.GetResult(node.playerJustMoved))
 		}
 	}
 
 	bestMove := rootnode.bestMove(UCTK)
-	return bestMove.move, leafNodeCount, int(1000.*bestMove.UCB1(1.00))
+	return bestMove, leafNodeCount, int(1000. * bestMove.UCB1(1.00))
 }
 
 func NewNode(move int, parent *Node, state *GameState) *Node {
@@ -201,9 +214,28 @@ func (p *GameState) Clone() *GameState {
 	return &st
 }
 
+func (p *GameState) resetCachedResults() {
+	p.cachedResults[0] = -1
+	p.cachedResults[1] = -1
+	p.cachedResults[2] = -1
+}
+
 func (p *GameState) DoMove(move int) {
 	p.playerJustMoved = -p.playerJustMoved
 	p.board[move] = p.playerJustMoved
+}
+
+func (p *MCTS) updateMoves(m int) {
+	if p.movesNode != nil {
+		for _, childNode := range p.movesNode.childNodes {
+			if childNode.move == m {
+				p.movesNode = childNode
+				p.movesNode.parentNode = nil
+				break
+			}
+		}
+
+	}
 }
 
 func (p GameState) GetMoves() ([]int, bool) {
@@ -211,16 +243,18 @@ func (p GameState) GetMoves() ([]int, bool) {
 	// Only have to check the 9 cells in important_cells[]
 	// for 4 or 3 in a row configs.
 	for _, m := range important_cells {
-		for _, quad := range winningQuads[m] {
-			sum := p.board[quad[0]] + p.board[quad[1]] + p.board[quad[2]] + p.board[quad[3]]
-			if sum == 4 || sum == -4 {
-				return []int{}, true
+		if p.board[m] != UNSET {
+			for _, quad := range winningQuads[m] {
+				sum := p.board[quad[0]] + p.board[quad[1]] + p.board[quad[2]] + p.board[quad[3]]
+				if sum == 4 || sum == -4 {
+					return []int{}, true
+				}
 			}
-		}
-		for _, triplet := range losingTriplets[m] {
-			sum := p.board[triplet[0]] + p.board[triplet[1]] + p.board[triplet[2]]
-			if sum == 3 || sum == -3 {
-				return []int{}, true
+			for _, triplet := range losingTriplets[m] {
+				sum := p.board[triplet[0]] + p.board[triplet[1]] + p.board[triplet[2]]
+				if sum == 3 || sum == -3 {
+					return []int{}, true
+				}
 			}
 		}
 	}
@@ -233,7 +267,7 @@ func (p GameState) GetMoves() ([]int, bool) {
 	endOfGame := true
 	var moves []int
 	for i := 0; i < 25; i++ {
-		if p.board[i] == 0 {
+		if p.board[i] == UNSET {
 			endOfGame = false
 			moves = append(moves, i)
 		}
@@ -243,33 +277,46 @@ func (p GameState) GetMoves() ([]int, bool) {
 }
 
 func (p *GameState) GetResult(playerjm int) float64 {
+	cached := p.cachedResults[playerjm+1]
+	if cached >= 0.0 {
+		return cached
+	}
 	// Need to check all 4-in-a-row wins before checking
 	// any 3-in-a-row losses, otherwise the result ends
 	// up wrong.
 	for _, i := range important_cells {
-		for _, quad := range winningQuads[i] {
-			sum := p.board[quad[0]] + p.board[quad[1]] + p.board[quad[2]] + p.board[quad[3]]
-			if sum == 4 || sum == -4 {
-				if sum == 4*playerjm {
-					return 1.0
-				} else {
-					return 0.0
+		if p.board[i] != UNSET {
+			for _, quad := range winningQuads[i] {
+				sum := p.board[quad[0]] + p.board[quad[1]] + p.board[quad[2]] + p.board[quad[3]]
+				if sum == 4 || sum == -4 {
+					if sum == 4*playerjm {
+						p.cachedResults[playerjm+1] = 1.0
+						return 1.0
+					} else {
+						p.cachedResults[playerjm+1] = 0.0
+						return 0.0
+					}
 				}
 			}
 		}
 	}
 	for _, i := range important_cells {
-		for _, triplet := range losingTriplets[i] {
-			sum := p.board[triplet[0]] + p.board[triplet[1]] + p.board[triplet[2]]
-			if sum == 3 || sum == -3 {
-				if sum == 3*playerjm {
-					return 0.0
-				} else {
-					return 1.0
+		if p.board[i] != UNSET {
+			for _, triplet := range losingTriplets[i] {
+				sum := p.board[triplet[0]] + p.board[triplet[1]] + p.board[triplet[2]]
+				if sum == 3 || sum == -3 {
+					if sum == 3*playerjm {
+						p.cachedResults[playerjm+1] = 0.0
+						return 0.0
+					} else {
+						p.cachedResults[playerjm+1] = 1.0
+						return 1.0
+					}
 				}
 			}
 		}
 	}
+	p.cachedResults[playerjm+1] = 0.0
 	return 0.0 // Should probably never get here.
 }
 
