@@ -109,6 +109,7 @@ func UCT(rootstate *GameState, itermax int, UCTK float64, rootnode *Node) *Node 
 			m := node.untriedMoves[rand.Intn(len(node.untriedMoves))]
 			state.DoMove(m)
 			node = node.AddChild(m, state) // updates node with the child
+			// node now represents m, the previously-untried move.
 		}
 
 		moves, terminalNode := state.GetMoves()
