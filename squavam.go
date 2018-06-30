@@ -45,7 +45,7 @@ func main() {
 	}
 
 	var movesNode *Node
-	for _, endOfGame := state.GetMoves(); !endOfGame; _, endOfGame = state.GetMoves(){
+	for _, endOfGame := state.GetMoves(); !endOfGame; _, endOfGame = state.GetMoves() {
 		var m int
 		fmt.Printf("%v\n", state)
 		if state.playerJustMoved == 1 {
@@ -57,6 +57,7 @@ func main() {
 			fmt.Printf("My move: %d %d %v\n", m/5, m%5, end.Sub(start))
 		} else {
 			m = readMove(state.board)
+			// pick out the child of movesNode corresponding to m
 			if movesNode != nil {
 				for _, childNode := range movesNode.childNodes {
 					if childNode.move == m {
@@ -94,11 +95,11 @@ func UCT(rootstate *GameState, itermax int, UCTK float64, rootnode *Node) *Node 
 
 	for i := 0; i < itermax; i++ {
 
-		node := rootnode  // node will get modified, rootnode also modified
-		state := rootstate.Clone()  // need to leave rootstate alone
+		node := rootnode           // node will get modified, need to return to rootnode
+		state := rootstate.Clone() // need to leave rootstate alone
 
 		for len(node.untriedMoves) == 0 && len(node.childNodes) > 0 {
-			node = node.UCTSelectChild(UCTK)  // updates node
+			node = node.UCTSelectChild(UCTK) // updates node
 			state.DoMove(node.move)
 		}
 
@@ -116,15 +117,17 @@ func UCT(rootstate *GameState, itermax int, UCTK float64, rootnode *Node) *Node 
 
 		// starting with current state, pick a random
 		// branch of the game tree, all the way to a win/loss.
-		for  !terminalNode  {
+		for !terminalNode {
 			m := moves[rand.Intn(len(moves))]
 			state.DoMove(m)
 			moves, terminalNode = state.GetMoves()
 		}
 
-		// node now points to a board where a player won
-		// and the other lost. Trace back up the tree, updating
-		// each node's wins and visit count.
+		// state.board now points to a board where a player
+		// won and the other lost, and it's a "descendant"
+		// of the board in node. node isn't necessarily at
+		// the end of the game. Trace back up the tree,
+		// updating each node's wins and visit count.
 
 		state.resetCachedResults()
 		for ; node != nil; node = node.parentNode {
@@ -132,11 +135,11 @@ func UCT(rootstate *GameState, itermax int, UCTK float64, rootnode *Node) *Node 
 		}
 	}
 
-/*
-	for idx, cn := range rootnode.childNodes {
-		fmt.Printf("child %d: %f  %v\n", idx, cn.UCB1(1.0), cn)
-	}
-*/
+	/*
+		for idx, cn := range rootnode.childNodes {
+			fmt.Printf("child %d: %f  %v\n", idx, cn.UCB1(1.0), cn)
+		}
+	*/
 
 	return rootnode.bestMove(UCTK)
 }
@@ -213,14 +216,14 @@ func NewGameState() *GameState {
 func (p *GameState) Clone() *GameState {
 	var st GameState
 	st.playerJustMoved = p.playerJustMoved
-	st.board = p.board  // copy since board has type [25]int
+	st.board = p.board // copy since board has type [25]int
 	return &st
 }
 
 func (p *GameState) resetCachedResults() {
-	p.cachedResults[0] = -1;
-	p.cachedResults[1] = -1;
-	p.cachedResults[2] = -1;
+	p.cachedResults[0] = -1
+	p.cachedResults[1] = -1
+	p.cachedResults[2] = -1
 }
 
 func (p *GameState) DoMove(move int) {
@@ -270,7 +273,7 @@ func (p *GameState) GetMoves() ([]int, bool) {
 
 func (p *GameState) GetResult(playerjm int) float64 {
 	cached := p.cachedResults[playerjm+1]
-	if (cached >= 0.0) {
+	if cached >= 0.0 {
 		return cached
 	}
 	// Need to check all 4-in-a-row wins before checking
@@ -308,7 +311,7 @@ func (p *GameState) GetResult(playerjm int) float64 {
 			}
 		}
 	}
-	return 0.0  // Should probably never get here.
+	return 0.0 // Should probably never get here.
 }
 
 func (p *GameState) String() string {
@@ -326,7 +329,7 @@ func (p *GameState) String() string {
 }
 
 func (p *GameState) String2() string {
-    return fmt.Sprintf("%d, %v", p.playerJustMoved, p.board)
+	return fmt.Sprintf("%d, %v", p.playerJustMoved, p.board)
 }
 
 func readMove(bd [25]int) int {
@@ -347,7 +350,7 @@ func readMove(bd [25]int) int {
 			fmt.Printf("Choose two numbers between 0 and 4, try again\n")
 		default:
 			m = 5*x + y
-			if	bd[m] == 0 {
+			if bd[m] == 0 {
 				readMove = true
 			} else {
 				fmt.Printf("Cell (%d, %d) already occupied, try again\n", x, y)
@@ -358,6 +361,7 @@ func readMove(bd [25]int) int {
 }
 
 var important_cells [9]int = [9]int{2, 7, 10, 11, 12, 13, 14, 17, 22}
+
 // 25 rows only to make looping easier. The filled-in
 // rows are the only quads you actually have to check
 // to find out if there's a win
