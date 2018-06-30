@@ -78,9 +78,10 @@ func (p *MCTS) SetScores(randomize bool) {
 }
 
 func (p *MCTS) FindWinner() int {
+	p.game.resetCachedResults()
 	m := p.game.playerJustMoved
 	w := p.game.GetResult(m)
-	if w > 0.0 {
+	if w != 0.0 {
 		return m
 	}
 	return 0
@@ -138,8 +139,8 @@ func UCT(rootstate *GameState, itermax int, UCTK float64, rootnode *Node) (*Node
 		}
 	}
 
-	bestMove := rootnode.bestMove(UCTK)
-	return bestMove, leafNodeCount, int(1000. * bestMove.UCB1(1.00))
+	moveChoice := rootnode.bestMove(UCTK)
+	return moveChoice, leafNodeCount, int(1000. * moveChoice.UCB1(1.00))
 }
 
 func NewNode(move int, parent *Node, state *GameState) *Node {
@@ -170,6 +171,10 @@ func (p *Node) bestMove(UCTK float64) *Node {
 		}
 	}
 	return bestmove
+}
+
+func (p *Node) String() string {
+	return fmt.Sprintf("Move %d, parent %p, childNodes %d, wins %f, visits %f, %d untried, %d moved", p.move, p.parentNode, p.childNodes, p.wins, p.visits, len(p.untriedMoves), p.playerJustMoved)
 }
 
 func (p *Node) UCTSelectChild(UCTK float64) *Node {
