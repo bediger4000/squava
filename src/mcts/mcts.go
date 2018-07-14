@@ -35,7 +35,7 @@ type MCTS struct {
 }
 
 func New(deterministic bool, maxdepth int) *MCTS {
-	return &MCTS{game: NewGameState(), iterations: 300000}
+	return &MCTS{game: NewGameState(), iterations: 1000000}
 }
 
 func (p *MCTS) Name() string {
@@ -45,7 +45,7 @@ func (p *MCTS) Name() string {
 func (p *MCTS) MakeMove(x, y int, player int) {
 	p.game.board[5*x+y] = player
 	p.game.playerJustMoved = player
-	p.updateMoves(5*x+y)
+	p.updateMoves(5*x + y)
 }
 
 func (p *MCTS) SetDepth(moveCounter int) {
@@ -77,12 +77,35 @@ func (p *MCTS) PrintBoard() {
 func (p *MCTS) SetScores(randomize bool) {
 }
 
+// Return MAXIMIZER or MINIMIZER if somebody won
+// UNSET if nobody wins on current board.
 func (p *MCTS) FindWinner() int {
-	p.game.resetCachedResults()
-	m := p.game.playerJustMoved
-	w := p.game.GetResult(m)
-	if w != 0.0 {
-		return m
+	board := p.game.board
+	for _, i := range important_cells {
+		if board[i] != UNSET {
+			for _, quad := range winningQuads[i] {
+				sum := board[quad[0]] + board[quad[1]] + board[quad[2]] + board[quad[3]]
+				switch sum {
+				case 4:
+					return MAXIMIZER
+				case -4:
+					return MINIMIZER
+				}
+			}
+		}
+	}
+	for _, i := range important_cells {
+		if board[i] != UNSET {
+			for _, triplet := range losingTriplets[i] {
+				sum := board[triplet[0]] + board[triplet[1]] + board[triplet[2]]
+				switch sum {
+				case 3:
+					return MINIMIZER
+				case -3:
+					return MAXIMIZER
+				}
+			}
+		}
 	}
 	return 0
 }
@@ -140,7 +163,7 @@ func UCT(rootstate *GameState, itermax int, UCTK float64, rootnode *Node) (*Node
 	}
 
 	moveChoice := rootnode.bestMove(UCTK)
-	return moveChoice, leafNodeCount, int(1000. * moveChoice.UCB1(1.00))
+	return moveChoice, leafNodeCount, int(1000. * moveChoice.UCB1(2.00))
 }
 
 func NewNode(move int, parent *Node, state *GameState) *Node {
@@ -168,6 +191,15 @@ func (p *Node) bestMove(UCTK float64) *Node {
 		if ucb1 > bestscore {
 			bestscore = ucb1
 			bestmove = c
+		}
+	}
+	if bestmove == nil {
+		fmt.Printf("Node has %d children\n", len(p.childNodes))
+		fmt.Printf("player just moved %d\n", p.playerJustMoved)
+		fmt.Printf("Move %d, wins %v visits %v\n", p.move, p.wins, p.visits)
+		for i, c := range p.childNodes {
+			ucb1 := c.UCB1(UCTK)
+			fmt.Printf("Child %d score %v\n", i, ucb1)
 		}
 	}
 	return bestmove
