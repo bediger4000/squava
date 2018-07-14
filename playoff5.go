@@ -79,8 +79,13 @@ func main() {
 
 		first.PrintBoard()
 
-		winner = -second.FindWinner() // main thinks second is minimizer
-		if winner != 0 {
+		winner1 := first.FindWinner()
+		winner2 := -second.FindWinner() // main thinks second is minimizer
+		if winner1 != winner2 {
+			fmt.Printf("Winner disagreement. First %d, second %d\n", winner1, winner2)
+		}
+		if winner2 != 0 {
+			winner = winner2
 			break
 		}
 
@@ -145,7 +150,7 @@ func nonInteractiveGames(gameCount int, firstType, secondType string, randomize 
 				if values[i][j] > 9000 {
 					marker[j] = "+"
 				}
-				if  values[i][j] < -9000 {
+				if values[i][j] < -9000 {
 					marker[j] = "-"
 				}
 			}
