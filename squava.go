@@ -320,16 +320,7 @@ func printBoard(bd *Board) {
 	for i, row := range bd {
 		fmt.Printf("%d  ", i)
 		for _, v := range row {
-			var marker string
-			switch v {
-			case MAXIMIZER:
-				marker = "X"
-			case MINIMIZER:
-				marker = "O"
-			case UNSET:
-				marker = "_"
-			}
-			fmt.Printf("%s ", marker)
+			fmt.Printf("%s ", string("O_X"[v+1]))
 		}
 		fmt.Printf("\n")
 	}
