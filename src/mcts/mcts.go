@@ -32,10 +32,11 @@ type MCTS struct {
 	game       *GameState
 	iterations int
 	movesNode  *Node
+	UCTK       float64
 }
 
 func New(deterministic bool, maxdepth int) *MCTS {
-	return &MCTS{game: NewGameState(), iterations: 1000000}
+	return &MCTS{game: NewGameState(), iterations: 1000000, UCTK: 2.0}
 }
 
 func (p *MCTS) Name() string {
@@ -55,7 +56,7 @@ func (p *MCTS) SetDepth(moveCounter int) {
 // move and its score.
 func (p *MCTS) ChooseMove() (xcoord int, ycoord int, value int, leafcount int) {
 
-	bestnode, leaves, value := UCT(p.game, p.iterations, 1.00, p.movesNode)
+	bestnode, leaves, value := UCT(p.game, p.iterations, p.UCTK, p.movesNode)
 
 	p.movesNode = bestnode
 	p.movesNode.parentNode = nil
@@ -162,8 +163,10 @@ func UCT(rootstate *GameState, itermax int, UCTK float64, rootnode *Node) (*Node
 		}
 	}
 
+	// The "value" of this move is somewhat fictitious, and
+	// not related to Negascout or any minimax value function.
 	moveChoice := rootnode.bestMove(UCTK)
-	return moveChoice, leafNodeCount, int(1000. * moveChoice.UCB1(2.00))
+	return moveChoice, leafNodeCount, int(1000. * moveChoice.UCB1(UCTK))
 }
 
 func NewNode(move int, parent *Node, state *GameState) *Node {
