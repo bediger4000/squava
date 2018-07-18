@@ -19,6 +19,13 @@ I chose "win", mainly because it's computationally easier to check for 4-in-a-ro
 as a win separately from 3-in-a-row as a loss. After all, every 4-in-a-row has
 3-in-a-row inside it.
 
+Neither player can win until the 7th move (4 for starting play, 3 for the other).
+The starting player can win on odd-numbered moves by winning with 4-in-a-row.
+The starting player can lose on even-numbered moves by losing with 3-in-a-row.
+
+Similarly, the second player wins on even-numbered moves by getting 4-in-a-row,
+or loses on odd-numbered moves with 3-in-a-row.
+
 ## Golang Programs
 
 Command line, text interface.  `squava` (the program) command line options:
@@ -73,6 +80,8 @@ The [Monte Carlo Tree Search algorithm](http://mcts.ai/) comes very
 directly from [Python code](http://mcts.ai/code/python.html). The default
 number of iterations (10000) seems far too small in practice. I find playing
 it more fun than playing any of the minimaxing versions.
+Since there's about 177,925,144,320,000 games for the first 11 moves,
+it's not too surprising that 10,000 iterations is too small.
 
 ### Book
 
@@ -246,7 +255,7 @@ wins those full-board games. I don't have a proof for this yet.
 The `playoff5` program allows you to run instances of two algorithms against
 each other:
 
-    $ ./playoff5
+    $ ./playoff5 -1 A -2 N
     AlphaBeta <3,3> (18) [95864]
     NegaScout <4,0> (5) [4134847]
        0 1 2 3 4
