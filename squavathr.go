@@ -238,12 +238,12 @@ func chooseMove(bd *Board, deterministic bool, maxDepth int) (xcoord int, ycoord
 	for i, row := range bd {
 		for j, mark := range row {
 			if mark == UNSET {
-				stopRecursing, value := deltaValue(maxDepth, bd, 0, i, j, 0)
+				stopRecursing, val := deltaValue(maxDepth, bd, 0, i, j, 0)
 				if stopRecursing {
-					moves.setMove(i, j, value)
+					moves.setMove(i, j, val)
 					leafNodes++
 				} else {
-					gs := newState(bd, maxDepth, value, i, j)
+					gs := newState(bd, maxDepth, val, i, j)
 					toDo <- gs
 				}
 			}
