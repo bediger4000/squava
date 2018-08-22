@@ -8,6 +8,7 @@ import (
 
 type board [5][5]int
 
+// Semantically meaningful constant names
 const (
 	WIN       = 10000
 	LOSS      = -10000
@@ -16,10 +17,11 @@ const (
 	UNSET     = 0
 )
 
+// AlphaBeta exported to meet playoff5.go's Player interface
 type AlphaBeta struct {
-	bd *board
+	bd            *board
 	leafNodeCount int
-	maxDepth int
+	maxDepth      int
 	deterministic bool
 }
 
@@ -28,8 +30,7 @@ type AlphaBeta struct {
 // or triplets. Makes deltaValue() a lot more efficient
 var indexedLosingTriplets [5][5][][][]int
 var indexedWinningQuads [5][5][][][]int
-var indexedCalcs bool = false
-
+var indexedCalcs = false
 
 func calculateIndexedMatrices() {
 	// Set up for use by deltaValue()
@@ -46,7 +47,8 @@ func calculateIndexedMatrices() {
 	}
 }
 
-func New(deterministic bool, maxdepth int) (*AlphaBeta) {
+// New has to exist to match Player interface
+func New(deterministic bool, maxdepth int) *AlphaBeta {
 	if !indexedCalcs {
 		calculateIndexedMatrices()
 		indexedCalcs = true
@@ -58,15 +60,17 @@ func New(deterministic bool, maxdepth int) (*AlphaBeta) {
 	return &r
 }
 
+// Name has to exist to match Player interface
 func (p *AlphaBeta) Name() string {
 	return "AlphaBeta"
 }
 
+// MakeMove has to exist to match Player interface
 func (p *AlphaBeta) MakeMove(x, y int, player int) {
 	p.bd[x][y] = player
 }
 
-
+// SetDepth has to exist to match Player interface
 func (p *AlphaBeta) SetDepth(moveCounter int) {
 	if moveCounter < 4 {
 		p.maxDepth = 6
@@ -79,6 +83,7 @@ func (p *AlphaBeta) SetDepth(moveCounter int) {
 	}
 }
 
+// ChooseMove has to exist to match Player interface.
 // Choose computer's next move: return x,y coords of move and its score.
 func (p *AlphaBeta) ChooseMove() (xcoord int, ycoord int, value int, leafcount int) {
 
@@ -105,43 +110,6 @@ func (p *AlphaBeta) ChooseMove() (xcoord int, ycoord int, value int, leafcount i
 	p.MakeMove(a, b, MAXIMIZER)
 
 	return a, b, v, p.leafNodeCount
-}
-
-func (p *AlphaBeta) findWinner() int {
-	for _, quad := range winningQuads {
-		sum := p.bd[quad[0][0]][quad[0][1]]
-		sum += p.bd[quad[1][0]][quad[1][1]]
-		sum += p.bd[quad[2][0]][quad[2][1]]
-		sum += p.bd[quad[3][0]][quad[3][1]]
-
-		if sum == 4 || sum == -4 {
-			return p.bd[quad[0][0]][quad[0][1]]
-		}
-	}
-
-	for _, triplet := range losingTriplets {
-		sum := p.bd[triplet[0][0]][triplet[0][1]]
-		sum += p.bd[triplet[1][0]][triplet[1][1]]
-		sum += p.bd[triplet[2][0]][triplet[2][1]]
-
-		if sum == 3 || sum == -3 {
-			return -p.bd[triplet[0][0]][triplet[0][1]]
-		}
-	}
-
-	return 0
-}
-
-// It turns out that you only have to look at
-// the 4-in-a-rows that contain these 9 cells
-// to check every 4-in-a-row. Similarly, you
-// only need to check these 9 cells to check
-// all the losing 3-in-a-row combos. You don't
-// have to look at each and every cell.
-var checkableCells [9][2]int = [9][2]int{
-	{0, 2}, {1, 2}, {2, 0},
-	{2, 1}, {2, 2}, {2, 3},
-	{2, 4}, {3, 2}, {4, 2},
 }
 
 // Calculates and returns the value of the move (x,y)
@@ -250,6 +218,7 @@ func (p *AlphaBeta) alphaBeta(ply int, player int, alpha int, beta int, x int, y
 	return value
 }
 
+// PrintBoard satisfies Player interface
 func (p *AlphaBeta) PrintBoard() {
 	fmt.Printf("   0 1 2 3 4\n")
 	for i, row := range p.bd {
@@ -271,7 +240,7 @@ func (p *AlphaBeta) PrintBoard() {
 	fmt.Printf("\n")
 }
 
-var losingTriplets [][][]int = [][][]int{
+var losingTriplets = [][][]int{
 	[][]int{[]int{0, 0}, []int{1, 0}, []int{2, 0}},
 	[][]int{[]int{0, 0}, []int{0, 1}, []int{0, 2}},
 	[][]int{[]int{0, 0}, []int{1, 1}, []int{2, 2}},
@@ -321,7 +290,7 @@ var losingTriplets [][][]int = [][][]int{
 	[][]int{[]int{1, 4}, []int{2, 4}, []int{3, 4}},
 	[][]int{[]int{2, 4}, []int{3, 4}, []int{4, 4}},
 }
-var winningQuads [][][]int = [][][]int{
+var winningQuads = [][][]int{
 	[][]int{[]int{0, 0}, []int{1, 0}, []int{2, 0}, []int{3, 0}},
 	[][]int{[]int{0, 0}, []int{0, 1}, []int{0, 2}, []int{0, 3}},
 	[][]int{[]int{0, 0}, []int{1, 1}, []int{2, 2}, []int{3, 3}},
@@ -354,11 +323,12 @@ var winningQuads [][][]int = [][][]int{
 
 var scores [5][5]int
 
+// SetScores has to exist to match Player interface.
 func (p *AlphaBeta) SetScores(randomize bool) {
 	if randomize {
-		var vals [11]int = [11]int{-5, -4, -3 - 2, -1, 0, 1, 2, 3, 4, 5}
+		var vals = [11]int{-5, -4, -3 - 2, -1, 0, 1, 2, 3, 4, 5}
 		for i, row := range scores {
-			for j, _ := range row {
+			for j := range row {
 				scores[i][j] = vals[rand.Intn(11)]
 			}
 		}
@@ -373,6 +343,7 @@ func (p *AlphaBeta) SetScores(randomize bool) {
 	}
 }
 
+// FindWinner has to exist to match Player interface.
 func (p *AlphaBeta) FindWinner() int {
 	for _, quad := range winningQuads {
 		sum := p.bd[quad[0][0]][quad[0][1]]
@@ -395,5 +366,5 @@ func (p *AlphaBeta) FindWinner() int {
 		}
 	}
 
-	return 0  // Cat got the game
+	return 0 // Cat got the game
 }
