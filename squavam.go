@@ -10,6 +10,7 @@ import (
 	"time"
 )
 
+// UNSET denotes an empty cell on board.
 const UNSET = 0
 
 type GameState struct {
@@ -233,9 +234,9 @@ func (p *GameState) DoMove(move int) {
 
 func (p *GameState) GetMoves() ([]int, bool) {
 
-	// Only have to check the 9 cells in important_cells[]
+	// Only have to check the 9 cells in importantCells[]
 	// for 4 or 3 in a row configs.
-	for _, m := range important_cells {
+	for _, m := range importantCells {
 		if p.board[m] != UNSET {
 			for _, quad := range winningQuads[m] {
 				sum := p.board[quad[0]] + p.board[quad[1]] + p.board[quad[2]] + p.board[quad[3]]
@@ -279,7 +280,7 @@ func (p *GameState) GetResult(playerjm int) float64 {
 	// Need to check all 4-in-a-row wins before checking
 	// any 3-in-a-row losses, otherwise the result ends
 	// up wrong.
-	for _, i := range important_cells {
+	for _, i := range importantCells {
 		if p.board[i] != UNSET {
 			for _, quad := range winningQuads[i] {
 				sum := p.board[quad[0]] + p.board[quad[1]] + p.board[quad[2]] + p.board[quad[3]]
@@ -287,15 +288,14 @@ func (p *GameState) GetResult(playerjm int) float64 {
 					if sum == 4*playerjm {
 						p.cachedResults[playerjm+1] = 1.0
 						return 1.0
-					} else {
-						p.cachedResults[playerjm+1] = 0.0
-						return 0.0
 					}
+					p.cachedResults[playerjm+1] = 0.0
+					return 0.0
 				}
 			}
 		}
 	}
-	for _, i := range important_cells {
+	for _, i := range importantCells {
 		if p.board[i] != UNSET {
 			for _, triplet := range losingTriplets[i] {
 				sum := p.board[triplet[0]] + p.board[triplet[1]] + p.board[triplet[2]]
@@ -303,10 +303,9 @@ func (p *GameState) GetResult(playerjm int) float64 {
 					if sum == 3*playerjm {
 						p.cachedResults[playerjm+1] = 0.0
 						return 0.0
-					} else {
-						p.cachedResults[playerjm+1] = 1.0
-						return 1.0
 					}
+					p.cachedResults[playerjm+1] = 1.0
+					return 1.0
 				}
 			}
 		}
@@ -360,12 +359,12 @@ func readMove(bd [25]int) int {
 	return m
 }
 
-var important_cells [9]int = [9]int{2, 7, 10, 11, 12, 13, 14, 17, 22}
+var importantCells = [9]int{2, 7, 10, 11, 12, 13, 14, 17, 22}
 
 // 25 rows only to make looping easier. The filled-in
 // rows are the only quads you actually have to check
 // to find out if there's a win
-var winningQuads [25][][]int = [25][][]int{
+var winningQuads = [25][][]int{
 	{}, {},
 	{{0, 1, 2, 3}, {1, 2, 3, 4}, {2, 7, 12, 17}},
 	{}, {}, {}, {},
@@ -386,7 +385,7 @@ var winningQuads [25][][]int = [25][][]int{
 // 25 rows only to make looping easier. The filled-in
 // rows are the only triplets you actually have to check
 // to find out if there's a loss.
-var losingTriplets [][][]int = [][][]int{
+var losingTriplets = [][][]int{
 	{}, {},
 	{{0, 1, 2}, {1, 2, 3}, {2, 3, 4}, {2, 7, 12}, {2, 6, 10}, {14, 8, 2}},
 	{}, {}, {}, {},
