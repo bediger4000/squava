@@ -184,7 +184,7 @@ func (p *Node) UCTSelectChild(UCTK float64) *Node {
 }
 
 func (p *Node) UCB1(UCTK float64) float64 {
-	return p.wins/(p.visits+math.SmallestNonzeroFloat64) + UCTK*math.Sqrt(2.*math.Log(p.parentNode.visits)/(p.visits+math.SmallestNonzeroFloat64))
+	return p.wins/(p.visits+math.SmallestNonzeroFloat64) + UCTK*math.Sqrt(math.Log(p.parentNode.visits)/(p.visits+math.SmallestNonzeroFloat64))
 }
 
 // AddChild creates a new *Node with the state of st
