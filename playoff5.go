@@ -35,6 +35,8 @@ func main() {
 	firstType := flag.String("1", "A", "first player type, A: alphabeta, N: negascout")
 	secondType := flag.String("2", "N", "first player type, A: alphabeta, N: negascout")
 	nonInteractive := flag.Int("n", 1, "play <number> games non-interactively")
+	u1 := flag.Float64("u1", 1.00, "UCTK coefficient, player 1")
+	u2 := flag.Float64("u2", 1.00, "UCTK coefficient, player 1")
 	flag.Parse()
 
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -50,6 +52,14 @@ func main() {
 
 	first, second := createPlayers(*firstType,
 		*secondType, *maxDepthPtr, *deterministic)
+
+	if *firstType == "M" {
+		first.(*mcts.MCTS).SetUCTK(*u1)
+	}
+
+	if *secondType == "M" {
+		second.(*mcts.MCTS).SetUCTK(*u2)
+	}
 
 	first.SetScores(*randomizeScores)
 	second.SetScores(*randomizeScores)
