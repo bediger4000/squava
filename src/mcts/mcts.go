@@ -44,6 +44,10 @@ func (p *MCTS) Name() string {
 	return "MCTS"
 }
 
+func (p *MCTS) SetUCTK(UCTK float64) {
+	p.UCTK = UCTK
+}
+
 func (p *MCTS) MakeMove(x, y int, player int) {
 	p.game.board[5*x+y] = player
 	p.game.playerJustMoved = player
