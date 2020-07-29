@@ -26,6 +26,9 @@ The starting player can lose on even-numbered moves by losing with 3-in-a-row.
 Similarly, the second player wins on even-numbered moves by getting 4-in-a-row,
 or loses on odd-numbered moves with 3-in-a-row.
 
+Peiyan Yang has put together a [program](https://github.com/iForgot321/Squava)
+that has solved the game for the first player, if that player plays (2, 2).
+
 ## Golang Programs
 
 Command line, text interface.  `squava` (the program) command line options:
