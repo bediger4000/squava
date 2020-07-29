@@ -66,15 +66,18 @@ func main() {
 	first.SetScores(*randomizeScores)
 	second.SetScores(*randomizeScores)
 
+	gameStart := time.Now()
 	for moveCounter < 25 {
 
 		first.SetDepth(moveCounter)
 
+		before := time.Now()
 		i, j, value, leafCount := first.ChooseMove()
+		et := time.Since(before)
 		second.MakeMove(i, j, MINIMIZER)
 
 		moveCounter++
-		fmt.Printf("X (%s) <%d,%d> (%d) [%d]\n", first.Name(), i, j, value, leafCount)
+		fmt.Printf("X (%s) <%d,%d> (%d) [%d] %v\n", first.Name(), i, j, value, leafCount, et)
 
 		winner = first.FindWinner() // main() thinks first is maximizer
 		if winner != 0 || moveCounter >= 25 {
@@ -83,11 +86,13 @@ func main() {
 
 		second.SetDepth(moveCounter)
 
+		before = time.Now()
 		i, j, value, leafCount = second.ChooseMove()
+		et = time.Since(before)
 		first.MakeMove(i, j, MINIMIZER)
 
 		moveCounter++
-		fmt.Printf("O (%s) <%d,%d> (%d) [%d]\n", second.Name(), i, j, value, leafCount)
+		fmt.Printf("O (%s) <%d,%d> (%d) [%d] %v\n", second.Name(), i, j, value, leafCount, et)
 
 		first.PrintBoard()
 
@@ -102,12 +107,13 @@ func main() {
 		}
 
 	}
+	gameET := time.Since(gameStart)
 
 	switch winner {
 	case 1:
-		fmt.Printf("X (%s) wins\n", first.Name())
+		fmt.Printf("X (%s) wins, %v\n", first.Name(), gameET)
 	case -1:
-		fmt.Printf("0 (%s) wins\n", second.Name())
+		fmt.Printf("0 (%s) wins, %v\n", second.Name(), gameET)
 	default:
 		fmt.Printf("Cat wins\n")
 	}
