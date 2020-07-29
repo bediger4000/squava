@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 
 	"squava/src/abbook"
@@ -173,6 +174,9 @@ func nonInteractiveGames(gameCount int, firstType, secondType string, randomize 
 }
 
 func createPlayers(firstType, secondType string, maxDepth int, deterministic bool) (Player, Player) {
+
+	firstType = strings.ToUpper(firstType)
+	secondType = strings.ToUpper(secondType)
 
 	var first, second Player
 
