@@ -1,15 +1,16 @@
 package main
 
 import (
-	"abbook"
-	"abgeo"
-	"alphabeta"
 	"flag"
 	"fmt"
 	"math/rand"
-	"mcts"
-	"negascout"
 	"time"
+
+	"squava/src/abbook"
+	"squava/src/abgeo"
+	"squava/src/alphabeta"
+	"squava/src/mcts"
+	"squava/src/negascout"
 )
 
 const (
