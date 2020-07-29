@@ -57,7 +57,7 @@ func main() {
 			end := time.Now()
 			fmt.Printf("My move: %d %d %v\n", m/5, m%5, end.Sub(start))
 		} else {
-			m = readMove(state.board)
+			m = readMove(&state.board)
 			// pick out the child of movesNode corresponding to m
 			if movesNode != nil {
 				for _, childNode := range movesNode.childNodes {
@@ -331,7 +331,7 @@ func (p *GameState) String2() string {
 	return fmt.Sprintf("%d, %v", p.playerJustMoved, p.board)
 }
 
-func readMove(bd [25]int) int {
+func readMove(bd *[25]int) int {
 	readMove := false
 	var x, y, m int
 	for !readMove {
