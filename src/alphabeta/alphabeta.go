@@ -3,7 +3,8 @@ package alphabeta
 import (
 	"fmt"
 	"math/rand"
-	"movekeeper"
+
+	"squava/src/movekeeper"
 )
 
 type board [5][5]int

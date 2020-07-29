@@ -7,7 +7,8 @@ package abgeo
 import (
 	"fmt"
 	"math/rand"
-	"movekeeper"
+
+	"squava/src/movekeeper"
 )
 
 type board [5][5]int
@@ -21,9 +22,9 @@ const (
 )
 
 type AlphaBetaGeo struct {
-	bd *board
+	bd            *board
 	leafNodeCount int
-	maxDepth int
+	maxDepth      int
 	deterministic bool
 }
 
@@ -49,7 +50,7 @@ func calculateIndexedMatrices() {
 	}
 }
 
-func New(deterministic bool, maxdepth int) (*AlphaBetaGeo) {
+func New(deterministic bool, maxdepth int) *AlphaBetaGeo {
 	if !indexedCalcs {
 		calculateIndexedMatrices()
 		indexedCalcs = true
@@ -68,7 +69,6 @@ func (p *AlphaBetaGeo) Name() string {
 func (p *AlphaBetaGeo) MakeMove(x, y int, player int) {
 	p.bd[x][y] = player
 }
-
 
 func (p *AlphaBetaGeo) SetDepth(moveCounter int) {
 	if moveCounter < 4 {
@@ -193,17 +193,17 @@ func (p *AlphaBetaGeo) deltaValue(ply int, x, y int, currentValue int) (stopRecu
 
 	for _, quad := range noMiddle2 {
 		player := p.bd[x][y]
-		if ((x == quad[1][0] && y == quad[1][1] && player == p.bd[quad[2][0]][quad[2][1]]) ||
-			(x == quad[2][0] && y == quad[2][1] && player == p.bd[quad[1][0]][quad[1][1]])) {
+		if (x == quad[1][0] && y == quad[1][1] && player == p.bd[quad[2][0]][quad[2][1]]) ||
+			(x == quad[2][0] && y == quad[2][1] && player == p.bd[quad[1][0]][quad[1][1]]) {
 
-				sum := p.bd[quad[0][0]][quad[0][1]]
-				sum += p.bd[quad[1][0]][quad[1][1]]
-				sum += p.bd[quad[2][0]][quad[2][1]]
-				sum += p.bd[quad[3][0]][quad[3][1]]
+			sum := p.bd[quad[0][0]][quad[0][1]]
+			sum += p.bd[quad[1][0]][quad[1][1]]
+			sum += p.bd[quad[2][0]][quad[2][1]]
+			sum += p.bd[quad[3][0]][quad[3][1]]
 
-				if sum == 2 || sum == -2 {
-					value += player * -100
-				}
+			if sum == 2 || sum == -2 {
+				value += player * -100
+			}
 		}
 	}
 
@@ -428,40 +428,39 @@ func (p *AlphaBetaGeo) FindWinner() int {
 		}
 	}
 
-	return 0  // Cat got the game
+	return 0 // Cat got the game
 }
 
 var a [12][5][2]int = [12][5][2]int{
-	{{0,0}, {0,1}, {0,2}, {0,3}, {0,4}},
-	{{1,0}, {1,1}, {1,2}, {1,3}, {1,4}},
-	{{2,0}, {2,1}, {2,2}, {2,3}, {2,4}},
-	{{3,0}, {3,1}, {3,2}, {3,3}, {3,4}},
-	{{4,0}, {4,1}, {4,2}, {4,3}, {4,4}},
+	{{0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}},
+	{{1, 0}, {1, 1}, {1, 2}, {1, 3}, {1, 4}},
+	{{2, 0}, {2, 1}, {2, 2}, {2, 3}, {2, 4}},
+	{{3, 0}, {3, 1}, {3, 2}, {3, 3}, {3, 4}},
+	{{4, 0}, {4, 1}, {4, 2}, {4, 3}, {4, 4}},
 
-	{{0,0}, {1,0}, {2,0}, {3,0}, {4,0}},
-	{{0,1}, {1,1}, {2,1}, {3,1}, {4,1}},
-	{{0,2}, {1,2}, {2,2}, {3,2}, {4,2}},
-	{{0,3}, {1,3}, {2,3}, {3,3}, {4,3}},
-	{{0,4}, {1,4}, {2,4}, {3,4}, {4,4}},
+	{{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}},
+	{{0, 1}, {1, 1}, {2, 1}, {3, 1}, {4, 1}},
+	{{0, 2}, {1, 2}, {2, 2}, {3, 2}, {4, 2}},
+	{{0, 3}, {1, 3}, {2, 3}, {3, 3}, {4, 3}},
+	{{0, 4}, {1, 4}, {2, 4}, {3, 4}, {4, 4}},
 
-	{{0,0}, {1,1}, {2,2}, {3,3}, {4,4}},
-	{{0,4}, {1,3}, {2,2}, {3,1}, {4,0}},
-
+	{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}},
+	{{0, 4}, {1, 3}, {2, 2}, {3, 1}, {4, 0}},
 }
 
 // 4-in-a-row where you don't want to have the middle 2
 var noMiddle2 [4][4][2]int = [4][4][2]int{
-    {{3,0}, {2,1}, {1,2}, {0,3}},
-    {{1,0}, {2,1}, {3,2}, {4,3}},
-    {{0,1}, {1,2}, {2,3}, {3,4}},
-    {{1,4}, {2,3}, {3,2}, {4,1}},
-}   
+	{{3, 0}, {2, 1}, {1, 2}, {0, 3}},
+	{{1, 0}, {2, 1}, {3, 2}, {4, 3}},
+	{{0, 1}, {1, 2}, {2, 3}, {3, 4}},
+	{{1, 4}, {2, 3}, {3, 2}, {4, 1}},
+}
 
 // 3-in-a-row where you don't want any 2 plus a blank
 var no2 [4][3][2]int = [4][3][2]int{
-	
-    {{2,0}, {1,1}, {0,2}},
-    {{0,2}, {1,3}, {2,4}},
-    {{4,2}, {3,3}, {2,4}},
-    {{4,2}, {3,1}, {2,0}},
+
+	{{2, 0}, {1, 1}, {0, 2}},
+	{{0, 2}, {1, 3}, {2, 4}},
+	{{4, 2}, {3, 3}, {2, 4}},
+	{{4, 2}, {3, 1}, {2, 0}},
 }

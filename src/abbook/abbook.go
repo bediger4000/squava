@@ -3,8 +3,9 @@ package abbook
 import (
 	"fmt"
 	"math/rand"
-	"movekeeper"
 	"os"
+
+	"squava/src/movekeeper"
 )
 
 type board [5][5]int
@@ -26,8 +27,8 @@ type AlphaBetaBook struct {
 	state          int
 	c_x            int
 	c_y            int
-    firstX         int
-    firstY         int
+	firstX         int
+	firstY         int
 	bookInProgress bool
 }
 
@@ -439,8 +440,8 @@ const (
 	CORNER
 	OTHERCORNER
 	OTHERDIAGONAL
-    BLOCKDIAG1
-    BLOCKDIAG2
+	BLOCKDIAG1
+	BLOCKDIAG2
 	LAST
 )
 
@@ -459,7 +460,8 @@ func (p *AlphaBetaBook) bookDefend() {
 	switch p.state {
 	case FIRST:
 		p.state = BLOCKDIAG1
-		OUTER: for i, row := range p.bd {
+	OUTER:
+		for i, row := range p.bd {
 			for j, mark := range row {
 				if mark != 0 {
 					lastx = i
@@ -486,7 +488,8 @@ func (p *AlphaBetaBook) bookDefend() {
 	case BLOCKDIAG1:
 		p.state = LAST
 		p.bookInProgress = false
-		OUTER2: for i, row := range p.bd {
+	OUTER2:
+		for i, row := range p.bd {
 			for j, mark := range row {
 				if !(i == p.firstX && j == p.firstY) && mark == MINIMIZER {
 					lastx = i

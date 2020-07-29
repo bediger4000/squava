@@ -1,10 +1,10 @@
 package negascout
 
-
 import (
 	"fmt"
 	"math/rand"
-	"movekeeper"
+
+	"squava/src/movekeeper"
 )
 
 type board [5][5]int
@@ -16,13 +16,13 @@ const (
 	MINIMIZER = -1
 	UNSET     = 0
 )
-type NegaScout struct {
-    bd *board
-    leafNodeCount int
-    maxDepth int
-    deterministic bool
-}
 
+type NegaScout struct {
+	bd            *board
+	leafNodeCount int
+	maxDepth      int
+	deterministic bool
+}
 
 // Arrays of losing triplets and winning quads, indexed
 // by <x,y> coords of all pairs composing each of the quads
@@ -31,40 +31,39 @@ var indexedLosingTriplets [5][5][][][]int
 var indexedWinningQuads [5][5][][][]int
 var indexedCalcs bool = false
 
-
 func (p *NegaScout) Name() string {
 	return "NegaScout"
 }
 
 func calculateIndexedMatrices() {
-    // Set up for use by deltaValue()
-    for _, triplet := range losingTriplets {
-        for _, pair := range triplet {
+	// Set up for use by deltaValue()
+	for _, triplet := range losingTriplets {
+		for _, pair := range triplet {
 			indexedLosingTriplets[pair[0]][pair[1]] = append(indexedLosingTriplets[pair[0]][pair[1]], triplet)
-        }
-    }
-    for _, quad := range winningQuads {
-        for _, pair := range quad {
-            indexedWinningQuads[pair[0]][pair[1]] = append(
-                indexedWinningQuads[pair[0]][pair[1]], quad)
-        }
-    }
+		}
+	}
+	for _, quad := range winningQuads {
+		for _, pair := range quad {
+			indexedWinningQuads[pair[0]][pair[1]] = append(
+				indexedWinningQuads[pair[0]][pair[1]], quad)
+		}
+	}
 }
 
-func New(deterministic bool, maxdepth int) (*NegaScout) {
-    if !indexedCalcs {
-        calculateIndexedMatrices()
-        indexedCalcs = true
-    }
+func New(deterministic bool, maxdepth int) *NegaScout {
+	if !indexedCalcs {
+		calculateIndexedMatrices()
+		indexedCalcs = true
+	}
 	var r NegaScout
-    r.bd = new(board)
-    r.maxDepth = maxdepth
-    r.deterministic = deterministic
-    return &r
+	r.bd = new(board)
+	r.maxDepth = maxdepth
+	r.deterministic = deterministic
+	return &r
 }
 
 func (p *NegaScout) MakeMove(x, y int, player int) {
-    p.bd[x][y] = player
+	p.bd[x][y] = player
 }
 
 func (p *NegaScout) SetDepth(moveCounter int) {
@@ -86,9 +85,9 @@ func (p *NegaScout) ChooseMove() (int, int, int, int) {
 
 	p.reorderMoves()
 
-	beta := 2*WIN
-	alpha := 2*LOSS
-	score := 3*LOSS
+	beta := 2 * WIN
+	alpha := 2 * LOSS
+	score := 3 * LOSS
 	n := beta
 
 	for _, cell := range orderedMoves[2] {
@@ -104,13 +103,16 @@ func (p *NegaScout) ChooseMove() (int, int, int, int) {
 				}
 			}
 			p.bd[i][j] = UNSET
-			if score > alpha { alpha = score }
+			if score > alpha {
+				alpha = score
+			}
 			moves.SetMove(i, j, alpha)
-			if alpha >= beta { break }
+			if alpha >= beta {
+				break
+			}
 			n = alpha + 1
 		}
 	}
-
 
 	a, b, v := moves.ChooseMove()
 
@@ -145,10 +147,10 @@ func (p *NegaScout) FindWinner() int {
 }
 
 var deadlyQuads [4][4][2]int = [4][4][2]int{
-	{{1,0}, {2,1}, {3,2}, {4,3}},
-	{{4,1}, {3,2}, {2,3}, {1,4}},
-	{{0,1}, {1,2}, {2,3}, {3,4}},
-	{{3,0}, {2,1}, {1,2}, {0,3}},
+	{{1, 0}, {2, 1}, {3, 2}, {4, 3}},
+	{{4, 1}, {3, 2}, {2, 3}, {1, 4}},
+	{{0, 1}, {1, 2}, {2, 3}, {3, 4}},
+	{{3, 0}, {2, 1}, {1, 2}, {0, 3}},
 }
 
 // It turns out that you only have to look at
@@ -202,7 +204,7 @@ func (p *NegaScout) staticValue(ply int) (stopRecursing bool, value int) {
 		inner := p.bd[quad[1][0]][quad[1][1]] + p.bd[quad[2][0]][quad[2][1]]
 
 		if (inner == 2 || inner == -2) && outer == 0 {
-			value -= inner/2 * 5
+			value -= inner / 2 * 5
 		}
 	}
 
@@ -231,10 +233,10 @@ func (p *NegaScout) negaScout(ply int, player int, alpha int, beta int) (value i
 
 	stopRecursing, boardValue := p.staticValue(ply)
 	if stopRecursing {
-		return player*boardValue
+		return player * boardValue
 	}
 
-	score := 3*LOSS  // Even 2*LOSS greater than this
+	score := 3 * LOSS // Even 2*LOSS greater than this
 	n := beta
 
 	for _, cell := range orderedMoves[player+1] {
@@ -243,15 +245,19 @@ func (p *NegaScout) negaScout(ply int, player int, alpha int, beta int) (value i
 			p.bd[i][j] = player
 			cur := -p.negaScout(ply+1, -player, -n, -alpha)
 			if cur > score {
-				if n == beta || ply == p.maxDepth - 2 {
+				if n == beta || ply == p.maxDepth-2 {
 					score = cur
 				} else {
 					score = -p.negaScout(ply+1, -player, -beta, -cur)
 				}
 			}
 			p.bd[i][j] = UNSET
-			if score > alpha { alpha = score }
-			if alpha >= beta { break }
+			if score > alpha {
+				alpha = score
+			}
+			if alpha >= beta {
+				break
+			}
 			n = alpha + 1
 		}
 	}
@@ -384,12 +390,12 @@ func (p *NegaScout) SetScores(randomize bool) {
 // Need a list of all possible moves, in an order that
 // works for the first 2 or 3 moves by instances of NegaScout.
 var initialOrderedMoves [25][2]int = [25][2]int{
-    {1,1}, {1,3}, {3,3}, {3,1},
-    {0,1}, {0,3}, {1,4}, {3,4}, {4,3}, {4,1}, {3,0}, {1,0},
-    {0,0}, {0,4}, {4,4}, {4,0},
-    {2,2},
-    {1,2}, {2,3}, {3,2}, {2,1},
-    {0,2}, {2,0}, {2,4}, {4,2},
+	{1, 1}, {1, 3}, {3, 3}, {3, 1},
+	{0, 1}, {0, 3}, {1, 4}, {3, 4}, {4, 3}, {4, 1}, {3, 0}, {1, 0},
+	{0, 0}, {0, 4}, {4, 4}, {4, 0},
+	{2, 2},
+	{1, 2}, {2, 3}, {3, 2}, {2, 1},
+	{0, 2}, {2, 0}, {2, 4}, {4, 2},
 }
 
 // Used in func negaScout(), orderedMoves[0] by MINIMIZER,
