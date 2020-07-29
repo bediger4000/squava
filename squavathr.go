@@ -254,7 +254,6 @@ func chooseMove(bd *Board, deterministic bool, maxDepth int) (xcoord int, ycoord
 		for _, mark := range row {
 			if mark == UNSET {
 				gs := <-finished
-				// fmt.Printf("	<%d,%d> %d  [%d]\n", gs.x, gs.y, gs.value, gs.leafNodes)
 				moves.setMove(gs.x, gs.y, gs.value)
 				leafNodes += gs.leafNodes
 				oldState(gs)
@@ -557,29 +556,29 @@ var winningQuads = [][][]int{
 
 var scores [5][5]int
 
-func readMove(bd *Board, print bool) (x, y int) {
+func readMove(bd *Board, printit bool) (x, y int) {
 	readMove := false
 	for !readMove {
-		if print {
+		if printit {
 			fmt.Printf("Your move: ")
 		}
 		x, y = scanMove()
-		readMove = checkMove(bd, x, y, print)
+		readMove = checkMove(bd, x, y, printit)
 	}
 	return x, y
 }
 
-func checkMove(bd *Board, x, y int, print bool) bool {
+func checkMove(bd *Board, x, y int, printit bool) bool {
 	r := false
 	switch {
 	case x < 0 || x > 4 || y < 0 || y > 4:
-		if print {
+		if printit {
 			fmt.Printf("Choose two numbers between 0 and 4, try again\n")
 		}
 	case bd[x][y] == 0:
 		r = true
 	case bd[x][y] != 0:
-		if print {
+		if printit {
 			fmt.Printf("Cell (%d, %d) already occupied, try again\n", x, y)
 		}
 	}
