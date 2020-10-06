@@ -11,7 +11,11 @@ import (
 )
 
 // UNSET denotes an empty cell on board.
-const UNSET = 0
+const (
+	UNSET     = 0
+	MAXIMIZER = 1
+	MINIMIZER = -1
+)
 
 type GameState struct {
 	playerJustMoved int
@@ -39,17 +43,17 @@ func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	state := NewGameState()
-	state.playerJustMoved = -1
+	state.playerJustMoved = MINIMIZER
 
 	if *computerFirstPtr {
-		state.playerJustMoved = 1
+		state.playerJustMoved = MAXIMIZER
 	}
 
 	var movesNode *Node
 	for _, endOfGame := state.GetMoves(); !endOfGame; _, endOfGame = state.GetMoves() {
 		var m int
 		fmt.Printf("%v\n", state)
-		if state.playerJustMoved == 1 {
+		if state.playerJustMoved == MAXIMIZER {
 			start := time.Now()
 			movesNode = UCT(state, *iterMax, *uctk, movesNode)
 			movesNode.parentNode = nil
@@ -210,7 +214,7 @@ func (p *Node) Update(result float64) {
 
 func NewGameState() *GameState {
 	var st GameState
-	st.playerJustMoved = -1
+	st.playerJustMoved = MINIMIZER
 	return &st
 }
 
