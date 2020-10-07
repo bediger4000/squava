@@ -7,15 +7,12 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"sync"
 	"time"
 )
 
 // UNSET denotes an empty cell on board.
-const (
-	UNSET     = 0
-	MAXIMIZER = 1
-	MINIMIZER = -1
-)
+const UNSET = 0
 
 type GameState struct {
 	playerJustMoved int
@@ -31,31 +28,34 @@ type Node struct {
 	visits          float64
 	untriedMoves    []int
 	playerJustMoved int
+	lck             *sync.Mutex
 }
 
 func main() {
 
 	iterMax := flag.Int("i", 10000, "maximum iterations")
 	uctk := flag.Float64("u", 1.00, "UCTK explore/exploit coefficient")
+	threadCountPtr := flag.Int("N", 10, "Use this many threads")
 	computerFirstPtr := flag.Bool("C", false, "Computer takes first move")
+
 	flag.Parse()
 
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	state := NewGameState()
-	state.playerJustMoved = MINIMIZER
+	state.playerJustMoved = -1
 
 	if *computerFirstPtr {
-		state.playerJustMoved = MAXIMIZER
+		state.playerJustMoved = 1
 	}
 
 	var movesNode *Node
 	for _, endOfGame := state.GetMoves(); !endOfGame; _, endOfGame = state.GetMoves() {
 		var m int
 		fmt.Printf("%v\n", state)
-		if state.playerJustMoved == MAXIMIZER {
+		if state.playerJustMoved == 1 {
 			start := time.Now()
-			movesNode = UCT(state, *iterMax, *uctk, movesNode)
+			movesNode = UCT(state, *iterMax, *threadCountPtr, *uctk, movesNode)
 			movesNode.parentNode = nil
 			m = movesNode.move
 			end := time.Now()
@@ -90,7 +90,9 @@ func main() {
 	}
 }
 
-func UCT(rootstate *GameState, itermax int, UCTK float64, rootnode *Node) *Node {
+func UCT(rootstate *GameState, itermax int, nthreads int, UCTK float64, rootnode *Node) *Node {
+
+	iterationsPerThread := itermax / nthreads
 
 	if rootnode == nil {
 		rootnode = NewNode(-1, nil, rootstate)
@@ -98,25 +100,54 @@ func UCT(rootstate *GameState, itermax int, UCTK float64, rootnode *Node) *Node 
 		rootnode.playerJustMoved = rootstate.playerJustMoved
 	}
 
+	wg := &sync.WaitGroup{}
+	for i := 0; i < nthreads; i++ {
+		rst := *rootstate
+		wg.Add(1)
+		go subUCT(i, &rst, iterationsPerThread, UCTK, rootnode, wg)
+	}
+	wg.Wait()
+
+	return rootnode.bestMove(UCTK)
+}
+
+// subUCT is a way to contain a single goroutine's iterations.
+// Update/add to the tree of *Node rooted at rootnode.
+// Must be thread-safe as all threads operate on the same tree.
+// Be careful of the interlocking lock/unlock when a pointer to a Node
+// gets modified.
+func subUCT(sn int, rootstate *GameState, itermax int, UCTK float64, rootnode *Node, wg *sync.WaitGroup) {
+
 	for i := 0; i < itermax; i++ {
 
-		node := rootnode           // node will get modified, need to return to rootnode
+		node := rootnode           // node will get re-assigned to, need to return to rootnode
 		state := rootstate.Clone() // need to leave rootstate alone
+		// node, state local to this goroutine
 
+		node.lck.Lock()
 		for len(node.untriedMoves) == 0 && len(node.childNodes) > 0 {
-			node = node.UCTSelectChild(UCTK) // updates node
+			tmp := node.UCTSelectChild(UCTK)
+			tmp.lck.Lock()
+			node.lck.Unlock()
+			node = tmp
 			state.DoMove(node.move)
 		}
+		node.lck.Unlock()
 
 		// This condition creates a child node from an untried move
 		// (if any exist), makes the move in state, and makes node
 		// the child node.
+		node.lck.Lock()
 		if len(node.untriedMoves) > 0 {
 			m := node.untriedMoves[rand.Intn(len(node.untriedMoves))]
 			state.DoMove(m)
-			node = node.AddChild(m, state) // updates node with the child
+			tmp := node.AddChild(m, state)
+			tmp.lck.Lock()
+			node.lck.Unlock()
+			node = tmp
 			// node now represents m, the previously-untried move.
 		}
+		node.lck.Unlock()
 
 		moves, terminalNode := state.GetMoves()
 
@@ -136,26 +167,24 @@ func UCT(rootstate *GameState, itermax int, UCTK float64, rootnode *Node) *Node 
 
 		state.resetCachedResults()
 		for ; node != nil; node = node.parentNode {
+			node.lck.Lock()
 			node.Update(state.GetResult(node.playerJustMoved))
+			node.lck.Unlock()
 		}
 	}
 
-	/*
-		for idx, cn := range rootnode.childNodes {
-			fmt.Printf("child %d: %f  %v\n", idx, cn.UCB1(1.0), cn)
-		}
-	*/
-
-	return rootnode.bestMove(UCTK)
+	wg.Done()
 }
 
 func NewNode(move int, parent *Node, state *GameState) *Node {
-	var n Node
-	n.move = move
-	n.parentNode = parent
-	n.untriedMoves, _ = state.GetMoves()
-	n.playerJustMoved = state.playerJustMoved
-	return &n
+	untriedMoves, _ := state.GetMoves()
+	return &Node{
+		move:            move,
+		parentNode:      parent,
+		untriedMoves:    untriedMoves,
+		playerJustMoved: state.playerJustMoved,
+		lck:             new(sync.Mutex),
+	}
 }
 
 // Since there's at most 25 moves to consider,
@@ -214,15 +243,15 @@ func (p *Node) Update(result float64) {
 
 func NewGameState() *GameState {
 	var st GameState
-	st.playerJustMoved = MINIMIZER
+	st.playerJustMoved = -1
 	return &st
 }
 
 func (p *GameState) Clone() *GameState {
-	var st GameState
-	st.playerJustMoved = p.playerJustMoved
-	st.board = p.board // copy since board has type [25]int
-	return &st
+	return &GameState{
+		playerJustMoved: p.playerJustMoved,
+		board:           p.board, // copy since board has type [25]int
+	}
 }
 
 func (p *GameState) resetCachedResults() {

@@ -185,6 +185,7 @@ that actually produces a worthwhile opponent, and it's also quite simple.
     go build sns.go        # NegaScout
     go build playoff5.go
     go build squavam.go    # Monte Carlo Tree Search
+    go build squavam2.go   # Multi-threaded Monte Carlo Tree Search
 
 `squava` will execute an Alpha-Beta minimax search for the best move. `sns`
 will execute a
