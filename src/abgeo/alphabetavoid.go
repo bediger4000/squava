@@ -55,11 +55,11 @@ func New(deterministic bool, maxdepth int) *AlphaBetaGeo {
 		calculateIndexedMatrices()
 		indexedCalcs = true
 	}
-	var r AlphaBetaGeo
-	r.bd = new(board)
-	r.maxDepth = maxdepth
-	r.deterministic = deterministic
-	return &r
+	return &AlphaBetaGeo{
+		bd:            new(board),
+		maxDepth:      maxdepth,
+		deterministic: deterministic,
+	}
 }
 
 func (p *AlphaBetaGeo) Name() string {
@@ -72,13 +72,13 @@ func (p *AlphaBetaGeo) MakeMove(x, y int, player int) {
 
 func (p *AlphaBetaGeo) SetDepth(moveCounter int) {
 	if moveCounter < 4 {
-		p.maxDepth = 6
-	}
-	if moveCounter > 3 {
 		p.maxDepth = 8
 	}
-	if moveCounter > 10 {
+	if moveCounter > 3 {
 		p.maxDepth = 10
+	}
+	if moveCounter > 10 {
+		p.maxDepth = 12
 	}
 }
 
