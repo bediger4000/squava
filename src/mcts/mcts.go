@@ -122,6 +122,24 @@ func UCT(rootstate *GameState, itermax int, UCTK float64, rootnode *Node) (*Node
 
 	if rootnode == nil {
 		rootnode = NewNode(-1, nil, rootstate)
+		if len(rootnode.untriedMoves) == 25 {
+			// Computer has the first move on the board.
+			// Include only 1/4 of the cells in rootnode.untriedMoves,
+			// since games can be rotated and mirrored to always start there.
+			var moves []int
+			switch rand.Intn(4) {
+			case 0: // Upper left
+				moves = []int{0, 1, 2, 5, 6, 7, 10, 11, 12}
+			case 1: // Upper right
+				moves = []int{2, 3, 4, 7, 8, 9, 12, 13, 14}
+			case 2: // Lower left
+				moves = []int{10, 11, 12, 15, 16, 17, 20, 21, 22}
+			case 3: // Lower right
+				moves = []int{12, 13, 14, 17, 18, 19, 22, 23, 24}
+			}
+			rootnode.untriedMoves = moves
+			itermax *= 2 // only 9 first moves, can do more iterations
+		}
 	} else {
 		rootnode.playerJustMoved = rootstate.playerJustMoved
 	}
