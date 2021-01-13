@@ -17,6 +17,11 @@ const (
 	MINIMIZER = -1
 )
 
+// This program represents a 5x5 board by a [25]int.
+// Humans give moves as "0 0" or "3 2", the program
+// converts ordered pair human inputs into array
+// indexes by: index = 5*x + y
+
 type GameState struct {
 	playerJustMoved int
 	board           [25]int
@@ -99,18 +104,19 @@ func UCT(rootstate *GameState, itermax int, UCTK float64, rootnode *Node) *Node 
 
 		if len(rootnode.untriedMoves) == 25 {
 			// Computer has the first move on the board.
-			// Include only 1/4 of the cells in rootnode.untriedMoves,
+			// Include less than 1/4 of the cells in rootnode.untriedMoves,
 			// since games can be rotated and mirrored to always start there.
+			// Every "quadrant" has to include <2,2> (index 12).
 			var moves []int
 			switch rand.Intn(4) {
 			case 0: // Upper left
-				moves = []int{0, 1, 2, 5, 6, 7, 10, 11, 12}
+				moves = []int{0, 1, 2, 5, 6, 7, 12}
 			case 1: // Upper right
-				moves = []int{2, 3, 4, 7, 8, 9, 12, 13, 14}
+				moves = []int{3, 4, 8, 9, 12, 13, 14}
 			case 2: // Lower left
-				moves = []int{10, 11, 12, 15, 16, 17, 20, 21, 22}
+				moves = []int{10, 11, 12, 15, 16, 20, 21}
 			case 3: // Lower right
-				moves = []int{12, 13, 14, 17, 18, 19, 22, 23, 24}
+				moves = []int{12, 17, 18, 19, 22, 23, 24}
 			}
 			rootnode.untriedMoves = moves
 			itermax *= 2
