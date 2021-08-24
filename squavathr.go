@@ -6,6 +6,7 @@ import (
 	"io"
 	"math/rand"
 	"os"
+	"runtime"
 	"time"
 )
 
@@ -42,13 +43,15 @@ var indexedWinningQuads [5][5][][][]int
 
 func main() {
 
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
 	humanFirstPtr := flag.Bool("H", true, "Human takes first move")
 	computerFirstPtr := flag.Bool("C", false, "Computer takes first move")
-	maxDepthPtr := flag.Int("d", 10, "maximum lookahead depth")
+	maxDepthPtr := flag.Int("d", 15, "maximum lookahead depth")
 	deterministic := flag.Bool("D", false, "Play deterministically")
 	printBoardPtr := flag.Bool("n", false, "Don't print board, just emit moves")
 	firstMovePtr := flag.String("M", "", "Tell computer to make this first move (x,y)")
-	threadCountPtr := flag.Int("N", 4, "Use this many threads")
+	threadCountPtr := flag.Int("N", runtime.NumCPU(), "Use this many threads")
 	randomizeScores := flag.Bool("r", false, "Randomize bias scores")
 	useBook := flag.Bool("B", false, "Use book start or defense")
 	flag.Parse()
@@ -182,13 +185,13 @@ func setDepth(moveCounter int, endGameDepth int) int {
 	var maxDepth int
 
 	if moveCounter < 4 {
-		maxDepth = 6
+		maxDepth = 10
 	}
 	if moveCounter > 3 {
-		maxDepth = 8
+		maxDepth = 12
 	}
 	if moveCounter > 10 {
-		maxDepth = 10
+		maxDepth = endGameDepth
 	}
 
 	return maxDepth
