@@ -37,7 +37,7 @@ type MCTS struct {
 }
 
 func New(deterministic bool, maxdepth int) *MCTS {
-	return &MCTS{game: NewGameState(), iterations: 1000000, UCTK: 1.0}
+	return &MCTS{game: NewGameState(), iterations: 500000, UCTK: 1.0}
 }
 
 func (p *MCTS) Name() string {
@@ -46,6 +46,10 @@ func (p *MCTS) Name() string {
 
 func (p *MCTS) SetUCTK(UCTK float64) {
 	p.UCTK = UCTK
+}
+
+func (p *MCTS) SetIterations(iterations int) {
+	p.iterations = iterations
 }
 
 func (p *MCTS) MakeMove(x, y int, player int) {
@@ -122,6 +126,7 @@ func UCT(rootstate *GameState, itermax int, UCTK float64, rootnode *Node) (*Node
 
 	if rootnode == nil {
 		rootnode = NewNode(-1, nil, rootstate)
+		/* This seems smart, but it biases the tree of Node for the rest of the game
 		if len(rootnode.untriedMoves) == 25 {
 			// Computer has the first move on the board.
 			// Include only 1/4 of the cells in rootnode.untriedMoves,
@@ -140,6 +145,7 @@ func UCT(rootstate *GameState, itermax int, UCTK float64, rootnode *Node) (*Node
 			rootnode.untriedMoves = moves
 			itermax *= 2 // only 9 first moves, can do more iterations
 		}
+		*/
 	} else {
 		rootnode.playerJustMoved = rootstate.playerJustMoved
 	}
