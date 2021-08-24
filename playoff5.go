@@ -31,14 +31,16 @@ type Player interface {
 
 func main() {
 
-	maxDepthPtr := flag.Int("d", 10, "maximum lookahead depth")
+	maxDepthPtr := flag.Int("d", 10, "maximum lookahead depth (alpha/beta)")
 	deterministic := flag.Bool("D", false, "Play deterministically")
 	randomizeScores := flag.Bool("r", false, "Randomize bias scores")
 	firstType := flag.String("1", "A", "first player type, A: alphabeta, N: negascout, B: A/B+book opening, G: A/B+avoid bad positions")
 	secondType := flag.String("2", "M", "second player type, A: alphabeta, N: negascout, B: A/B+book opening, G: A/B+avoid bad positions")
 	nonInteractive := flag.Int("n", 1, "play <number> games non-interactively")
-	u1 := flag.Float64("u1", 1.00, "UCTK coefficient, player 1")
-	u2 := flag.Float64("u2", 1.00, "UCTK coefficient, player 2")
+	u1 := flag.Float64("u1", 1.00, "UCTK coefficient, player 1 (MCTS)")
+	u2 := flag.Float64("u2", 1.00, "UCTK coefficient, player 2 (MCTS)")
+	i1 := flag.Int("i1", 500000, "MCTS iterations, player 1")
+	i2 := flag.Int("i2", 500000, "MCTS iterations, player 2")
 	flag.Parse()
 
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -57,10 +59,12 @@ func main() {
 
 	if *firstType == "M" {
 		first.(*mcts.MCTS).SetUCTK(*u1)
+		first.(*mcts.MCTS).SetIterations(*i1)
 	}
 
 	if *secondType == "M" {
 		second.(*mcts.MCTS).SetUCTK(*u2)
+		first.(*mcts.MCTS).SetIterations(*i2)
 	}
 
 	first.SetScores(*randomizeScores)
