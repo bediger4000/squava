@@ -64,7 +64,7 @@ func main() {
 
 	if *secondType == "M" {
 		second.(*mcts.MCTS).SetUCTK(*u2)
-		first.(*mcts.MCTS).SetIterations(*i2)
+		second.(*mcts.MCTS).SetIterations(*i2)
 	}
 
 	first.SetScores(*randomizeScores)
