@@ -37,8 +37,8 @@ func main() {
 	firstType := flag.String("1", "A", "first player type, A: alphabeta, N: negascout, B: A/B+book opening, G: A/B+avoid bad positions")
 	secondType := flag.String("2", "M", "second player type, A: alphabeta, N: negascout, B: A/B+book opening, G: A/B+avoid bad positions")
 	nonInteractive := flag.Int("n", 1, "play <number> games non-interactively")
-	u1 := flag.Float64("u1", 1.00, "UCTK coefficient, player 1 (MCTS)")
-	u2 := flag.Float64("u2", 1.00, "UCTK coefficient, player 2 (MCTS)")
+	u1 := flag.Float64("u1", 0.50, "UCTK coefficient, player 1 (MCTS)")
+	u2 := flag.Float64("u2", 0.50, "UCTK coefficient, player 2 (MCTS)")
 	i1 := flag.Int("i1", 500000, "MCTS iterations, player 1")
 	i2 := flag.Int("i2", 500000, "MCTS iterations, player 2")
 	flag.Parse()
@@ -115,9 +115,9 @@ func main() {
 
 	switch winner {
 	case 1:
-		fmt.Printf("X (%s) wins, %v\n", first.Name(), gameET)
+		fmt.Printf("player 1 X (%s) wins, %v\n", first.Name(), gameET)
 	case -1:
-		fmt.Printf("0 (%s) wins, %v\n", second.Name(), gameET)
+		fmt.Printf("player 2 O (%s) wins, %v\n", second.Name(), gameET)
 	default:
 		fmt.Printf("Cat wins\n")
 	}
