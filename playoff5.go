@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"squava/src/abbook"
-	"squava/src/abgeo"
 	"squava/src/alphabeta"
 	"squava/src/mcts"
 	"squava/src/negascout"
@@ -198,7 +197,8 @@ func createPlayers(firstType, secondType string, maxDepth int, deterministic boo
 	case "B":
 		first = abbook.New(deterministic, maxDepth)
 	case "G":
-		first = abgeo.New(deterministic, maxDepth)
+		first = alphabeta.New(deterministic, maxDepth)
+		first.(*alphabeta.AlphaBeta).SetAvoid()
 	case "M":
 		first = mcts.New(deterministic, maxDepth)
 	}
@@ -211,7 +211,8 @@ func createPlayers(firstType, secondType string, maxDepth int, deterministic boo
 	case "B":
 		second = abbook.New(deterministic, maxDepth)
 	case "G":
-		second = abgeo.New(deterministic, maxDepth)
+		second = alphabeta.New(deterministic, maxDepth)
+		second.(*alphabeta.AlphaBeta).SetAvoid()
 	case "M":
 		second = mcts.New(deterministic, maxDepth)
 	}
