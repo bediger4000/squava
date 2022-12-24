@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"squava/src/abgeo"
 	"squava/src/alphabeta"
 	"squava/src/mcts"
 )
@@ -118,7 +117,8 @@ func createPlayer(typ string, maxDepth int) Player {
 	case "A":
 		computerPlayer = alphabeta.New(false, maxDepth)
 	case "G":
-		computerPlayer = abgeo.New(false, maxDepth)
+		computerPlayer = alphabeta.New(false, maxDepth)
+		computerPlayer.(*alphabeta.AlphaBeta).SetAvoid()
 	case "M":
 		computerPlayer = mcts.New(false, maxDepth)
 	}
