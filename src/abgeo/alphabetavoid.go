@@ -135,18 +135,6 @@ func (p *AlphaBetaGeo) findWinner() int {
 	return 0
 }
 
-// It turns out that you only have to look at
-// the 4-in-a-rows that contain these 9 cells
-// to check every 4-in-a-row. Similarly, you
-// only need to check these 9 cells to check
-// all the losing 3-in-a-row combos. You don't
-// have to look at each and every cell.
-var checkableCells [9][2]int = [9][2]int{
-	{0, 2}, {1, 2}, {2, 0},
-	{2, 1}, {2, 2}, {2, 3},
-	{2, 4}, {3, 2}, {4, 2},
-}
-
 // Calculates and returns the value of the move (x,y)
 // Only considers value gained or lost from the cell (x,y)
 func (p *AlphaBetaGeo) deltaValue(ply int, x, y int, currentValue int) (stopRecursing bool, value int) {
@@ -238,7 +226,7 @@ func (p *AlphaBetaGeo) alphaBeta(ply int, player int, alpha int, beta int, x int
 						p.leafNodeCount++
 						return delta
 					}
-					n := p.alphaBeta(ply+1, MINIMIZER, alpha, beta, i, j, boardValue+delta)
+					n := p.alphaBeta(ply+1, MINIMIZER, alpha, beta, i, j, delta)
 					p.bd[i][j] = UNSET
 					if n > value {
 						value = n
@@ -264,7 +252,7 @@ func (p *AlphaBetaGeo) alphaBeta(ply int, player int, alpha int, beta int, x int
 						p.leafNodeCount++
 						return delta
 					}
-					n := p.alphaBeta(ply+1, -player, alpha, beta, i, j, boardValue+delta)
+					n := p.alphaBeta(ply+1, -player, alpha, beta, i, j, delta)
 					p.bd[i][j] = UNSET
 					if n < value {
 						value = n
