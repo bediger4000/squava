@@ -15,13 +15,13 @@ import (
 )
 
 const (
-	MAXIMIZER = 1
-	MINIMIZER = -1
+	HUMAN    = -1
+	COMPUTER = 1
 )
 
 type Player interface {
 	Name() string
-	MakeMove(int, int, int) // x,y coords, type of player (MINIMIZER, MAXIMIZER)
+	MakeMove(int, int, int) // x,y coords, type of player (HUMAN, COMPUTER)
 	SetDepth(int)
 	ChooseMove() (int, int, int, int) // x,y coords of move, value, leaf node count
 	PrintBoard()
@@ -31,8 +31,7 @@ type Player interface {
 
 func main() {
 
-	humanFirstPtr := flag.Bool("H", true, "Human takes first move")
-	computerFirstPtr := flag.Bool("C", false, "Computer takes first move")
+	computerFirstPtr := flag.Bool("C", false, "Computer takes first move (default false)")
 	randomizeScores := flag.Bool("r", false, "Randomize bias scores")
 	maxDepthPtr := flag.Int("d", 10, "maximum lookahead depth (alpha/beta)")
 	typ := flag.String("t", "A", "first player type, A: alphabeta, G: A/B+avoid bad positions, M: MCTS")
@@ -55,9 +54,9 @@ func main() {
 
 	computerPlayer.SetScores(*randomizeScores)
 
-	humanFirst := *humanFirstPtr
+	next := HUMAN
 	if *computerFirstPtr {
-		humanFirst = false
+		next = COMPUTER
 	}
 
 	// computerPlayer keeps track of the board internally,
@@ -67,28 +66,29 @@ func main() {
 
 	for moveCounter < 25 {
 
-		if humanFirst {
+		switch next {
+
+		case HUMAN:
 			l, m := bd.readMove()
-			computerPlayer.MakeMove(l, m, MINIMIZER)
-			winner = computerPlayer.FindWinner()
-			moveCounter++
-			if winner != 0 || moveCounter >= 25 {
-				break
-			}
+			computerPlayer.MakeMove(l, m, HUMAN)
+			next = COMPUTER
+
+		case COMPUTER:
+			computerPlayer.SetDepth(moveCounter)
+
+			before := time.Now()
+			i, j, value, leafCount := computerPlayer.ChooseMove()
+			et := time.Since(before)
+
+			fmt.Printf("X (%s) <%d,%d> (%d) [%d] %v\n", computerPlayer.Name(), i, j, value, leafCount, et)
+
+			bd.makeMove(i, j, COMPUTER)
+			next = HUMAN
 		}
 
-		humanFirst = true
-
-		computerPlayer.SetDepth(moveCounter)
-		before := time.Now()
-		i, j, value, leafCount := computerPlayer.ChooseMove()
-		et := time.Since(before)
-
-		bd.makeMove(i, j, MAXIMIZER)
 		moveCounter++
-		fmt.Printf("X (%s) <%d,%d> (%d) [%d] %v\n", computerPlayer.Name(), i, j, value, leafCount, et)
-
 		winner = computerPlayer.FindWinner()
+
 		if winner != 0 || moveCounter >= 25 {
 			break
 		}
@@ -153,6 +153,6 @@ func (bd *Board) readMove() (x, y int) {
 			fmt.Printf("Cell (%d, %d) already occupied, try again\n", x, y)
 		}
 	}
-	bd.makeMove(x, y, MINIMIZER)
+	bd.makeMove(x, y, HUMAN)
 	return x, y
 }
