@@ -18,12 +18,12 @@ const (
 	UNSET     = 0
 )
 
-// AlphaBeta exported to meet playoff5.go's Player interface
 type AlphaBeta struct {
 	bd            *board
 	leafNodeCount int
 	maxDepth      int
 	deterministic bool
+	boardValue    func(*AlphaBeta, int, int, int, int) (bool, int)
 }
 
 // Arrays of losing triplets and winning quads, indexed
@@ -48,44 +48,45 @@ func calculateIndexedMatrices() {
 	}
 }
 
-// New has to exist to match Player interface
 func New(deterministic bool, maxdepth int) *AlphaBeta {
 	if !indexedCalcs {
 		calculateIndexedMatrices()
 		indexedCalcs = true
 	}
-	var r AlphaBeta
-	r.bd = new(board)
-	r.maxDepth = maxdepth
-	r.deterministic = deterministic
-	return &r
+	return &AlphaBeta{
+		bd:            new(board),
+		maxDepth:      maxdepth,
+		deterministic: deterministic,
+		boardValue:    deltaValue,
+	}
 }
 
-// Name has to exist to match Player interface
+// Name of the player
 func (p *AlphaBeta) Name() string {
 	return "AlphaBeta"
 }
 
-// MakeMove has to exist to match Player interface
+// MakeMove changes internal board representation,
+// making opposing player's move
 func (p *AlphaBeta) MakeMove(x, y int, player int) {
 	p.bd[x][y] = player
 }
 
-// SetDepth has to exist to match Player interface
+// SetDepth changes the max recursion depth based
+// on how far along the game has gotten.
 func (p *AlphaBeta) SetDepth(moveCounter int) {
 	if moveCounter < 4 {
-		p.maxDepth = 6
-	}
-	if moveCounter > 3 {
 		p.maxDepth = 8
 	}
-	if moveCounter > 10 {
+	if moveCounter > 3 {
 		p.maxDepth = 10
+	}
+	if moveCounter > 10 {
+		p.maxDepth = 12
 	}
 }
 
-// ChooseMove has to exist to match Player interface.
-// Choose computer's next move: return x,y coords of move and its score.
+// ChooseMove - choose computer's next move: return x,y coords of move and its score.
 func (p *AlphaBeta) ChooseMove() (xcoord int, ycoord int, value int, leafcount int) {
 
 	moves := movekeeper.New(2*LOSS, p.deterministic)
@@ -96,7 +97,7 @@ func (p *AlphaBeta) ChooseMove() (xcoord int, ycoord int, value int, leafcount i
 		for j, mark := range row {
 			if mark == UNSET {
 				p.bd[i][j] = MAXIMIZER
-				stop, value := p.deltaValue(0, i, j, 0)
+				stop, value := p.boardValue(p, 0, i, j, 0)
 				if !stop {
 					value = p.alphaBeta(1, MINIMIZER, 2*LOSS, 2*WIN, i, j, value)
 				}
@@ -113,9 +114,9 @@ func (p *AlphaBeta) ChooseMove() (xcoord int, ycoord int, value int, leafcount i
 	return a, b, v, p.leafNodeCount
 }
 
-// Calculates and returns the value of the move (x,y)
-// Only considers value gained or lost from the cell (x,y)
-func (p *AlphaBeta) deltaValue(ply int, x, y int, currentValue int) (stopRecursing bool, value int) {
+// deltaValue calculates the value of the board,
+// including value change from move (x,y).
+func deltaValue(p *AlphaBeta, ply int, x, y int, currentValue int) (stopRecursing bool, value int) {
 
 	relevantQuads := indexedWinningQuads[x][y]
 	for _, quad := range relevantQuads {
@@ -168,13 +169,13 @@ func (p *AlphaBeta) alphaBeta(ply int, player int, alpha int, beta int, x int, y
 			for j, marker := range row {
 				if marker == UNSET {
 					p.bd[i][j] = MAXIMIZER
-					stopRecursing, delta := p.deltaValue(ply, x, y, boardValue)
+					stopRecursing, delta := p.boardValue(p, ply, x, y, boardValue)
 					if stopRecursing {
 						p.bd[i][j] = UNSET
 						p.leafNodeCount++
 						return delta
 					}
-					n := p.alphaBeta(ply+1, MINIMIZER, alpha, beta, i, j, boardValue+delta)
+					n := p.alphaBeta(ply+1, MINIMIZER, alpha, beta, i, j, delta)
 					p.bd[i][j] = UNSET
 					if n > value {
 						value = n
@@ -194,13 +195,13 @@ func (p *AlphaBeta) alphaBeta(ply int, player int, alpha int, beta int, x int, y
 			for j, marker := range row {
 				if marker == UNSET {
 					p.bd[i][j] = player
-					stopRecursing, delta := p.deltaValue(ply, x, y, boardValue)
+					stopRecursing, delta := p.boardValue(p, ply, x, y, boardValue)
 					if stopRecursing {
 						p.bd[i][j] = UNSET
 						p.leafNodeCount++
 						return delta
 					}
-					n := p.alphaBeta(ply+1, -player, alpha, beta, i, j, boardValue+delta)
+					n := p.alphaBeta(ply+1, -player, alpha, beta, i, j, delta)
 					p.bd[i][j] = UNSET
 					if n < value {
 						value = n
@@ -219,7 +220,9 @@ func (p *AlphaBeta) alphaBeta(ply int, player int, alpha int, beta int, x int, y
 	return value
 }
 
-// PrintBoard satisfies Player interface
+// PrintBoard prints the board in a human-readable fashion.
+// Necessary to encapsulate the internal representation of
+// a 5x5 board
 func (p *AlphaBeta) PrintBoard() {
 	fmt.Printf("   0 1 2 3 4\n")
 	for i, row := range p.bd {
@@ -324,7 +327,8 @@ var winningQuads = [][][]int{
 
 var scores [5][5]int
 
-// SetScores has to exist to match Player interface.
+// SetScores does any prep on a new board, like
+// initializing a small bias on each cell
 func (p *AlphaBeta) SetScores(randomize bool) {
 	if randomize {
 		var vals = [11]int{-5, -4, -3 - 2, -1, 0, 1, 2, 3, 4, 5}
@@ -344,7 +348,8 @@ func (p *AlphaBeta) SetScores(randomize bool) {
 	}
 }
 
-// FindWinner has to exist to match Player interface.
+// FindWinner returns the winner of the current game,
+// if any, based on internal board representation
 func (p *AlphaBeta) FindWinner() int {
 	for _, quad := range winningQuads {
 		sum := p.bd[quad[0][0]][quad[0][1]]
