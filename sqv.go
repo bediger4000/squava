@@ -63,13 +63,12 @@ func main() {
 	// computerPlayer keeps track of the board internally,
 	// but we'll keep track too, so the human can be informed
 	// that an input move has already been taken.
-	var bd [5][5]int
+	bd := new(Board)
 
 	for moveCounter < 25 {
 
 		if humanFirst {
-			l, m := readMove(&bd)
-			bd[l][m] = MINIMIZER
+			l, m := bd.readMove()
 			computerPlayer.MakeMove(l, m, MINIMIZER)
 			winner = computerPlayer.FindWinner()
 			moveCounter++
@@ -85,7 +84,7 @@ func main() {
 		i, j, value, leafCount := computerPlayer.ChooseMove()
 		et := time.Since(before)
 
-		bd[i][j] = MAXIMIZER
+		bd.makeMove(i, j, MAXIMIZER)
 		moveCounter++
 		fmt.Printf("X (%s) <%d,%d> (%d) [%d] %v\n", computerPlayer.Name(), i, j, value, leafCount, et)
 
@@ -127,7 +126,13 @@ func createPlayer(typ string, maxDepth int) Player {
 	return computerPlayer
 }
 
-func readMove(bd *[5][5]int) (x, y int) {
+type Board [5][5]int
+
+func (bd *Board) makeMove(x, y, player int) {
+	bd[x][y] = player
+}
+
+func (bd *Board) readMove() (x, y int) {
 	readMove := false
 	for !readMove {
 		fmt.Printf("Your move: ")
@@ -148,5 +153,6 @@ func readMove(bd *[5][5]int) (x, y int) {
 			fmt.Printf("Cell (%d, %d) already occupied, try again\n", x, y)
 		}
 	}
+	bd.makeMove(x, y, MINIMIZER)
 	return x, y
 }
