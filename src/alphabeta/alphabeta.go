@@ -376,3 +376,100 @@ func (p *AlphaBeta) FindWinner() int {
 
 	return 0 // Cat got the game
 }
+
+// Calculates and returns the value of the move (x,y)
+// Only considers value gained or lost from the cell (x,y)
+func deltaValue2(p *AlphaBeta, ply int, x, y int, currentValue int) (stopRecursing bool, value int) {
+
+	relevantQuads := indexedWinningQuads[x][y]
+	for _, quad := range relevantQuads {
+		sum := p.bd[quad[0][0]][quad[0][1]]
+		sum += p.bd[quad[1][0]][quad[1][1]]
+		sum += p.bd[quad[2][0]][quad[2][1]]
+		sum += p.bd[quad[3][0]][quad[3][1]]
+
+		if sum == 4 || sum == -4 {
+			return true, p.bd[quad[0][0]][quad[0][1]] * (WIN - ply)
+		}
+		if sum == 3 || sum == -3 {
+			value += sum * 10
+		}
+	}
+
+	relevantTriplets := indexedLosingTriplets[x][y]
+	for _, triplet := range relevantTriplets {
+		sum := p.bd[triplet[0][0]][triplet[0][1]]
+		sum += p.bd[triplet[1][0]][triplet[1][1]]
+		sum += p.bd[triplet[2][0]][triplet[2][1]]
+
+		if sum == 3 || sum == -3 {
+			return true, sum / 3 * (LOSS + ply)
+		}
+	}
+
+	for _, triplet := range no2 {
+		for _, pair := range triplet {
+			if x == pair[0] && y == pair[1] {
+				sum := p.bd[triplet[0][0]][triplet[0][1]]
+				sum += p.bd[triplet[1][0]][triplet[1][1]]
+				sum += p.bd[triplet[2][0]][triplet[2][1]]
+				if sum == 2 || sum == -2 {
+					value += p.bd[x][y] * -100
+				}
+				break
+			}
+		}
+	}
+
+	for _, quad := range noMiddle2 {
+		player := p.bd[x][y]
+		if (x == quad[1][0] && y == quad[1][1] && player == p.bd[quad[2][0]][quad[2][1]]) ||
+			(x == quad[2][0] && y == quad[2][1] && player == p.bd[quad[1][0]][quad[1][1]]) {
+
+			sum := p.bd[quad[0][0]][quad[0][1]]
+			sum += p.bd[quad[1][0]][quad[1][1]]
+			sum += p.bd[quad[2][0]][quad[2][1]]
+			sum += p.bd[quad[3][0]][quad[3][1]]
+
+			if sum == 2 || sum == -2 {
+				value += player * -100
+			}
+		}
+	}
+
+	// Give it a slight bias for those early
+	// moves when all losing-triplets and winning-quads
+	// are beyond the horizon.
+	value += p.bd[x][y] * scores[x][y]
+
+	// If squava has a "cat game", then this is wrong. Cat
+	// games could stop recursing here.
+	stopRecursing = false
+	if ply >= p.maxDepth {
+		stopRecursing = true
+		value += currentValue
+	}
+
+	return stopRecursing, value
+}
+
+// 4-in-a-row where you don't want to have the middle 2
+var noMiddle2 = [4][4][2]int{
+	{{3, 0}, {2, 1}, {1, 2}, {0, 3}},
+	{{1, 0}, {2, 1}, {3, 2}, {4, 3}},
+	{{0, 1}, {1, 2}, {2, 3}, {3, 4}},
+	{{1, 4}, {2, 3}, {3, 2}, {4, 1}},
+}
+
+// 3-in-a-row where you don't want any 2 plus a blank
+var no2 = [4][3][2]int{
+	{{2, 0}, {1, 1}, {0, 2}},
+	{{0, 2}, {1, 3}, {2, 4}},
+	{{4, 2}, {3, 3}, {2, 4}},
+	{{4, 2}, {3, 1}, {2, 0}},
+}
+
+func (p *AlphaBeta) SetAvoid() {
+	p.name = "A/B+Avoid"
+	p.boardValue = deltaValue2
+}
