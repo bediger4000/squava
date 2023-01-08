@@ -107,7 +107,7 @@ func bestMove(board [25]int, iterations int) (move int, value int, leafCount int
 		for len(node.untriedMoves) == 0 && len(node.childNodes) > 0 {
 			fmt.Printf("Node move %d/player %d has best child ", node.move, node.player)
 			node = node.selectBestChild()
-			fmt.Printf(" with move %d/player %d score %.4f ", node.move, node.player, node.score)
+			fmt.Printf("with move %d, player %d,  %.0f/%.0f/%.3f ", node.move, node.player, node.wins, node.visits, node.score)
 			state.player = 0 - state.player
 			state.board[node.move] = state.player
 			fmt.Printf("board now:\n%s\n", boardString(state.board))
@@ -153,9 +153,11 @@ func bestMove(board [25]int, iterations int) (move int, value int, leafCount int
 					}
 					break
 				}
-				moves = (&state).RemainingMoves()
+				cutElement(&moves, m)
 			}
 		}
+
+		fmt.Printf("board after playout:\n%s\n", boardString(state.board))
 
 		leafCount++
 
@@ -164,7 +166,7 @@ func bestMove(board [25]int, iterations int) (move int, value int, leafCount int
 			winIncr = 1.0
 		}
 
-		fmt.Printf("Back propagation\n")
+		fmt.Printf("Back propagation: win %v\n", win)
 		// Back propagation
 		for node != nil {
 			node.visits += 1.0
@@ -172,6 +174,9 @@ func bestMove(board [25]int, iterations int) (move int, value int, leafCount int
 				node.wins += winIncr
 				node.score = node.wins / node.visits
 			}
+			fmt.Printf("node move %d, player %d: %.0f/%.0f/%.3f\n",
+				node.move, node.player, node.wins, node.visits, node.score,
+			)
 			node = node.parent
 		}
 	}
@@ -184,11 +189,11 @@ func bestMove(board [25]int, iterations int) (move int, value int, leafCount int
 
 // cutElement removes element from slice ary
 // that has value v. Disorders ary.
-func cutElement(ary []int, v int) {
-	for i, m := range ary {
+func cutElement(ary *[]int, v int) {
+	for i, m := range *ary {
 		if m == v {
-			ary[i] = ary[len(ary)-1]
-			ary = ary[:len(ary)-1]
+			(*ary)[i] = (*ary)[len(*ary)-1]
+			*ary = (*ary)[:len((*ary))-1]
 			break
 		}
 	}
@@ -203,11 +208,11 @@ func (node *Node) AddChild(mv int, player int) *Node {
 	}
 	node.childNodes = append(node.childNodes, ch)
 	// weed out mv as an untried move
-	cutElement(node.untriedMoves, mv)
+	cutElement(&(node.untriedMoves), mv)
 
 	fmt.Printf("Child nodes %d:\n", len(node.childNodes))
 	for _, n := range node.childNodes {
-		fmt.Printf("\t%d/%d\n", n.move, n.player)
+		fmt.Printf("\tmove %d player %d, %.0f/%.0f/%.3f\n", n.move, n.player, n.wins, n.visits, n.score)
 	}
 	fmt.Printf("untried moves: %v\n", node.untriedMoves)
 
