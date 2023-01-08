@@ -112,6 +112,7 @@ func bestMove(board [25]int, iterations int) (move int, value int, leafCount int
 			state.board[node.move] = state.player
 			fmt.Printf("board now:\n%s\n", boardString(state.board))
 		}
+		fmt.Print("End Selection\n\n")
 
 		// state should represent the board resulting from following
 		// the "best child" nodes, and node points to a Node struct
@@ -128,7 +129,7 @@ func bestMove(board [25]int, iterations int) (move int, value int, leafCount int
 			state.board[mv] = state.player
 			fmt.Printf("expansion move %d, board:\n%s\n", mv, boardString(state.board))
 
-			node = node.AddChild(mv, state.player) // AddChild take mv out of untriedMoves slice
+			node = node.AddChild(mv, &state) // AddChild take mv out of untriedMoves slice
 			node.winner = findWinner(&(state.board))
 			if node.winner == MAXIMIZER {
 				node.score = 1.0
@@ -136,6 +137,7 @@ func bestMove(board [25]int, iterations int) (move int, value int, leafCount int
 			}
 			// node represents mv, the previously untried move
 		}
+		fmt.Print("End Expansion\n\n")
 
 		fmt.Printf("Simulation\n")
 		// Simulation
@@ -143,9 +145,11 @@ func bestMove(board [25]int, iterations int) (move int, value int, leafCount int
 			moves := (&state).RemainingMoves()
 
 			for len(moves) > 0 {
+				// fmt.Printf("\tRemaining moves: %v\n", moves)
 				m := moves[rand.Intn(len(moves))]
 				state.player = 0 - state.player
 				state.board[m] = state.player
+				// fmt.Printf("\tmove %d, player %d\n", m, state.player)
 				winner := findWinner(&(state.board))
 				if winner != UNSET {
 					if winner == MAXIMIZER {
@@ -158,6 +162,7 @@ func bestMove(board [25]int, iterations int) (move int, value int, leafCount int
 		}
 
 		fmt.Printf("board after playout:\n%s\n", boardString(state.board))
+		fmt.Print("End Simulation\n\n")
 
 		leafCount++
 
@@ -170,18 +175,27 @@ func bestMove(board [25]int, iterations int) (move int, value int, leafCount int
 		// Back propagation
 		for node != nil {
 			node.visits += 1.0
-			if node.winner == UNSET {
-				node.wins += winIncr
-				node.score = node.wins / node.visits
-			}
+			// if node.winner == UNSET {
+			node.wins += winIncr
+			node.score = node.wins / node.visits
+			// }
 			fmt.Printf("node move %d, player %d: %.0f/%.0f/%.3f\n",
 				node.move, node.player, node.wins, node.visits, node.score,
 			)
 			node = node.parent
 		}
+		fmt.Print("End Back propagation\n\n")
+	}
+
+	fmt.Printf("after iterations root node %.0f/%.0f\n", root.wins, root.visits)
+
+	fmt.Println("Child nodes:")
+	for _, c := range root.childNodes {
+		fmt.Printf("\tmove %d, player %d, %.0f/%.0f/%.3f\n", c.move, c.player, c.wins, c.visits, c.score)
 	}
 
 	moveNode := root.selectBestChild()
+	fmt.Printf("\nbest move node move %d, player %d, %.0f/%.0f/%.3f\n", moveNode.move, moveNode.player, moveNode.wins, moveNode.visits, moveNode.score)
 	move = moveNode.move
 
 	return
@@ -199,12 +213,13 @@ func cutElement(ary *[]int, v int) {
 	}
 }
 
-func (node *Node) AddChild(mv int, player int) *Node {
-	fmt.Printf("node.AddChild(%d, %d)\n", mv, player)
+func (node *Node) AddChild(mv int, state *GameState) *Node {
+	fmt.Printf("node.AddChild(%d, %d)\n", mv, state.player)
 	ch := &Node{
-		move:   mv,
-		parent: node,
-		player: player,
+		move:         mv,
+		parent:       node,
+		player:       state.player,
+		untriedMoves: state.RemainingMoves(),
 	}
 	node.childNodes = append(node.childNodes, ch)
 	// weed out mv as an untried move
@@ -236,7 +251,7 @@ func (node *Node) selectBestChild() *Node {
 // RemainingMoves returns an array of all moves left
 // unmade on state.board
 func (state *GameState) RemainingMoves() []int {
-	mvs := make([]int, 25)
+	mvs := make([]int, 0, 25)
 	j := 0
 	for i := 0; i < 25; i++ {
 		if state.board[i] == UNSET {
