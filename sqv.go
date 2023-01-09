@@ -11,6 +11,8 @@ import (
 
 	"squava/src/alphabeta"
 	"squava/src/mcts"
+	"squava/src/mcts2"
+	"squava/src/mcts3"
 )
 
 const (
@@ -44,12 +46,7 @@ func main() {
 
 	moveCounter := 0
 
-	computerPlayer := createPlayer(*typ, *maxDepthPtr)
-
-	if *typ == "M" {
-		computerPlayer.(*mcts.MCTS).SetUCTK(*u)
-		computerPlayer.(*mcts.MCTS).SetIterations(*i)
-	}
+	computerPlayer := createPlayer(*typ, *maxDepthPtr, *u, *i)
 
 	computerPlayer.SetScores(*randomizeScores)
 
@@ -107,7 +104,7 @@ func main() {
 	computerPlayer.PrintBoard()
 }
 
-func createPlayer(typ string, maxDepth int) Player {
+func createPlayer(typ string, maxDepth int, factor float64, iterations int) Player {
 
 	typ = strings.ToUpper(typ)
 
@@ -121,6 +118,15 @@ func createPlayer(typ string, maxDepth int) Player {
 		computerPlayer.(*alphabeta.AlphaBeta).SetAvoid()
 	case "M":
 		computerPlayer = mcts.New(false, maxDepth)
+		computerPlayer.(*mcts.MCTS).SetUCTK(factor)
+		computerPlayer.(*mcts.MCTS).SetIterations(iterations)
+	case "L":
+		computerPlayer = mcts2.New(false, maxDepth)
+		computerPlayer.(*mcts2.MCTS2).SetUCTK(factor)
+		computerPlayer.(*mcts2.MCTS2).SetIterations(iterations)
+	case "P":
+		computerPlayer = mcts3.New(false, maxDepth)
+		computerPlayer.(*mcts3.MCTS3).SetIterations(iterations)
 	}
 
 	return computerPlayer

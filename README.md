@@ -1,3 +1,10 @@
+# UNMAINTAINED REPO
+
+I had experimented too much, this repo is fully of garbage code
+that really can't be salvaged.
+
+Please use my [other squava repo](https://github.com/bediger4000/squava2)
+
 # The Game of Squava
 
 ## Rules
